@@ -11,9 +11,13 @@ const Stack = createNativeStackNavigator()
 
 function HomeScreen() {
   return (
-    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', }}>
+    <View style={{flex: 1, justifyContent: 'center', alignItems: 'center',backgroundColor: "white" }}>
       <Image source={require ('./src/assets/OnboardingImage.png')}
       style={{width:400, height:400}}/>
+      <Text style= {{fontWeight: 'bold',fontSize: 52}}>
+        <Text >Rate</Text>
+        <Text style={{color: COLORS.primary}}>Me</Text>
+      </Text>
       <View style= {{width: '100%'}}>
       <CustomButton title="Get Started" bgColor= {COLORS.primary} textColor="white" marginTop = {33} />
       <CustomButton title="Log in" bgColor= {COLORS.white} textColor="black" marginTop = {23} borderwith= {1}/>
