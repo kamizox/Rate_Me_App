@@ -1,20 +1,20 @@
 // src/constants/colors.js
 
  const COLORS = {
-  primary: '#4CAF50',       // Main green color (Buttons, active states, logo text)
-  primaryDark: '#388E3C',   // Darker green variant
-  primaryLight: '#E8F5E9',  // Light green background tints
+  primary: '#4CAF50',      
+  primaryDark: '#388E3C',   
+  primaryLight: '#E8F5E9',  
   
-  orange: '#FFB300',        // Brand orange color (Logo box, ratings, stars)
-  orangeLight: '#FFF8E1',   // Light orange tint
+  orange: '#FFB300',        
+  orangeLight: '#FFF8E1',  
 
-  background: '#FFFFFF',    // Screen background (Pure white)
-  surface: '#F8F9FA',       // Card or input field background (Off-white/light grey)
+  background: '#FFFFFF',    
+  surface: '#F8F9FA',     
   
-  textMain: '#212121',      // Main headings and titles (Dark black)
-  textMuted: '#757575',     // Subtitles, descriptions, and placeholder text (Grey)
+  textMain: '#212121',      
+  textMuted: '#757575',     
   
-  border: '#E0E0E0',        // Input borders and dividers
+  border: '#E0E0E0',        
   white: '#FFFFFF',
   black: '#000000',
 };
