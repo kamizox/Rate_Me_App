@@ -5,7 +5,7 @@ import React from 'react'
 import {CustomButton} from './src/components/CustomButton.jsx'
 import {COLORS} from './src/constant/colors.js'
 import { styles } from './src/styleSheet.js'
-import {LoginScreen} from '../Pr/src/screens/auth/LoginScreen.jsx'
+import {LoginScreen} from './src/screens/auth/LoginScreen.jsx'
 
 
 const Stack = createNativeStackNavigator()
@@ -22,7 +22,7 @@ function HomeScreen({navigation}) {
       <View style= {{width: '100%'}}>
       <CustomButton title="Get Started" bgColor= {COLORS.primary} textColor="white" marginTop = {33} />
       <CustomButton title="Log in" bgColor= {COLORS.white} textColor="black" 
-       marginTop = {23} borderwith= {1} onPress={()=> navigation.navigation('login')}/>
+       marginTop = {23} borderwith= {1} onPress={()=> navigation.navigate('login')}/>
       </View>
       <Text style= {{marginTop: 10}} >By continuing you agree to our </Text>
       <Text style={{fontWeight:'bold'}}>Terms & Privacy Policy</Text>
