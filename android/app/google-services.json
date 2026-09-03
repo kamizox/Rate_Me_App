@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "807058046291",
+    "project_id": "rateme-381f8",
+    "storage_bucket": "rateme-381f8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:807058046291:android:a57cbe38056f729b3db5a6",
+        "android_client_info": {
+          "package_name": "com.pr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXVpOMxqpBO68JhZCamffKgRikzOwmc-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

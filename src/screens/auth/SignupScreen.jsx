@@ -3,15 +3,17 @@ import {
   View, 
   Text, 
   TextInput, 
+  Image, 
   TouchableOpacity, 
   StyleSheet, 
-  ScrollView, 
-  Image
+  ScrollView 
 } from 'react-native';
 
-const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const SignupScreen = ({navigation}) => {
+  const [fullName, setFullName] = useState();
+  const [username, setUsername] = useState();
+  const [email, setEmail] = useState();
+  const [password, setPassword] = useState();
   const [secureText, setSecureText] = useState(true);
 
   return (
@@ -19,13 +21,46 @@ const LoginScreen = ({ navigation }) => {
       
       {/* Top Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Log In</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.title}>Create Account</Text>
       </View>
-      <Text style={styles.subtitle}>Welcome back!</Text>
+      <Text style={styles.subtitle}>Join RateMe and start your journey</Text>
+
+      {/* Profile Picture with Camera Icon */}
+      <View style={styles.profileContainer}>
+        <Image 
+          source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500' }} 
+          style={styles.profileImage} 
+        />
+        <View style={styles.cameraBadge}>
+          <Image
+          style= {{width:13,height:13}}
+          source={require('../../assets/icons/photo-camera-interface-symbol-for-button.png')}
+          />
+        </View>
+      </View>
+
+      {/* Full Name Field */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Full Name</Text>
+        <TextInput 
+          style={styles.input}
+          value={fullName}
+          onChangeText={setFullName}
+        />
+      </View>
+
+   {/* Username Field */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Username</Text>
+        <TextInput 
+          style={styles.input}
+          value={username}
+          onChangeText={setUsername}
+        />
+      </View>
 
       {/* Email Field */}
       <View style={styles.inputGroup}>
@@ -35,34 +70,23 @@ const LoginScreen = ({ navigation }) => {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
-          autoCapitalize="none"
         />
       </View>
 
-      {/* Password Field with Eye Icon */}
+      {/* Password Field */}
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Password</Text>
-        <View style={styles.inputWithTextContainer}>
-          <TextInput 
-            style={styles.innerInput}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={secureText}
-          />
-          <TouchableOpacity onPress={() => setSecureText(!secureText)}>
-            <Text style={styles.eyeIcon}>👁️‍🗨️</Text>
-          </TouchableOpacity>
-        </View>
+        <TextInput 
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={secureText}
+        />
       </View>
 
-      {/* Forgot Password Link */}
-      <TouchableOpacity style={styles.forgotContainer}>
-        <Text style={styles.forgotText}>Forgot Password?</Text>
-      </TouchableOpacity>
-
-      {/* Log In Button */}
-      <TouchableOpacity style={styles.loginButton}>
-        <Text style={styles.loginButtonText}>Log In</Text>
+      {/* Sign Up Button */}
+      <TouchableOpacity style={styles.signUpButton}>
+        <Text style={styles.signUpText}>Sign Up</Text>
       </TouchableOpacity>
 
       {/* Divider / Social Login Text */}
@@ -78,17 +102,17 @@ const LoginScreen = ({ navigation }) => {
         </TouchableOpacity>
         <TouchableOpacity style={styles.socialButton}>
           <Image
-                      source={require('../../assets/icons/apple-logo.png')}
-                      style= {styles.appleIconst}
-                    />
+            source={require('../../assets/icons/apple-logo.png')}
+            style= {styles.appleIconst}
+          />
         </TouchableOpacity>
       </View>
 
-      {/* Footer / Sign Up Link */}
+      {/* Footer / Login Link */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.signUpLink}>Sign Up</Text>
+        <Text style={styles.footerText}>Already have an account? </Text>
+        <TouchableOpacity onPress={()=> navigation.navigate('Login')}>
+          <Text style={styles.loginLink} >Log In</Text>
         </TouchableOpacity>
       </View>
 
@@ -99,7 +123,7 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: '#fff',
+    
     flexGrow: 1,
     justifyContent: 'center',
   },
@@ -107,11 +131,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 5,
-    width: '100%',
+    width:'100%'
   },
   backButton: {
     marginRight: 15,
-    padding: 5,
+    padding:5,
   },
   backArrow: {
     fontSize: 22,
@@ -123,18 +147,47 @@ const styles = StyleSheet.create({
     color: '#000',
     textAlign: 'center',
     flex: 1,
+    marginRight: 33
   },
   subtitle: {
     fontSize: 14,
-    marginBottom: 25,
-    color: '#777',
+    marginBottom: 20,
+    color: 'black',
     textAlign: 'center',
   },
+  profileContainer: {
+    alignSelf: 'center',
+    marginBottom: 20,
+    position: 'relative',
+  },
+  profileImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 2,
+    borderColor: '#eee',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#4CAF50',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  cameraIcon: {
+    fontSize: 12,
+  },
   inputGroup: {
-    marginBottom: 15,
+    marginBottom: 12,
   },
   label: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#444',
     marginBottom: 5,
     fontWeight: '500',
@@ -152,58 +205,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#e0e0e0',
     borderRadius: 10,
     backgroundColor: '#fafafa',
     paddingHorizontal: 15,
     height: 48,
   },
-  innerInput: {
-    flex: 1,
-    height: '100%',
-    fontSize: 14,
-    color: '#000',
+  availableText: {
+    color: '#4CAF50',
+    fontWeight: '600',
+    fontSize: 13,
   },
   eyeIcon: {
     fontSize: 16,
     color: '#888',
   },
-  forgotContainer: {
-    alignItems: 'flex-end',
-    marginBottom: 20,
-  },
-  forgotText: {
-    color: '#5A9624',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  loginButton: {
-    backgroundColor: '#5A9624',
+  signUpButton: {
+    backgroundColor: '#5A9624', // Match green theme
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginTop: 15,
+    marginBottom: 15,
   },
-    loginButtonText: {
+  signUpText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
   orText: {
     textAlign: 'center',
-    color: '#777',
-    fontSize: 14,
-    marginBottom: 20,
+    color: 'black',
+    fontSize: 16,
+    marginBottom: 15,
   },
   socialContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 15,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   socialButton: {
-    width: 70,
+    width: 90,
     height: 45,
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -218,17 +262,19 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    marginTop: 10,
   },
   footerText: {
     color: '#777',
     fontSize: 13,
   },
-  signUpLink: {
-    color: '#5A9624',
+  loginLink: {
+    color: '#4CAF50',
     fontWeight: 'bold',
     fontSize: 13,
   },
-   googleIconSt: {
+
+  googleIconSt: {
     width: 22,
     height: 22
   },
@@ -238,4 +284,4 @@ const styles = StyleSheet.create({
   }
 });
 
-export { LoginScreen };
+export { SignupScreen };
