@@ -6,22 +6,52 @@ import {
   Image, 
   TouchableOpacity, 
   StyleSheet, 
-  ScrollView 
+  ScrollView,
+  Alert // Alert import kiya messages ke liye
 } from 'react-native';
 
+// Firebase Auth import kiya
+import auth from '@react-native-firebase/auth';
+
 const SignupScreen = ({navigation}) => {
-  const [fullName, setFullName] = useState();
-  const [username, setUsername] = useState();
-  const [email, setEmail] = useState();
-  const [password, setPassword] = useState();
+  const [fullName, setFullName] = useState('');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
+
+  // Firebase Signup Function
+  const handleSignup = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
+    
+    try {
+      // Firebase mein user create kar rahe hain
+      await auth().createUserWithEmailAndPassword(email, password);
+      Alert.alert('Success', 'Account created successfully!');
+      
+      // Account banne ke baad Login screen par bhej dein
+      // navigation.navigate('Login'); 
+      
+    } catch (error) {
+      if (error.code === 'auth/email-already-in-use') {
+        Alert.alert('Error', 'That email address is already in use!');
+      } else if (error.code === 'auth/invalid-email') {
+        Alert.alert('Error', 'That email address is invalid!');
+      } else {
+        Alert.alert('Error', error.message);
+      }
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       
       {/* Top Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Create Account</Text>
@@ -59,6 +89,7 @@ const SignupScreen = ({navigation}) => {
           style={styles.input}
           value={username}
           onChangeText={setUsername}
+          autoCapitalize="none"
         />
       </View>
 
@@ -70,6 +101,7 @@ const SignupScreen = ({navigation}) => {
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
+          autoCapitalize="none"
         />
       </View>
 
@@ -84,8 +116,8 @@ const SignupScreen = ({navigation}) => {
         />
       </View>
 
-      {/* Sign Up Button */}
-      <TouchableOpacity style={styles.signUpButton}>
+      {/* Sign Up Button -> Yahan onPress mein handleSignup laga diya */}
+      <TouchableOpacity style={styles.signUpButton} onPress={handleSignup}>
         <Text style={styles.signUpText}>Sign Up</Text>
       </TouchableOpacity>
 
@@ -123,9 +155,9 @@ const SignupScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    
     flexGrow: 1,
     justifyContent: 'center',
+    backgroundColor: '#fff' // Ek safed background add kiya acha dikhne ke liye
   },
   header: {
     flexDirection: 'row',
@@ -273,7 +305,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 13,
   },
-
   googleIconSt: {
     width: 22,
     height: 22
