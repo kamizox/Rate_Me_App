@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -11,9 +11,17 @@ import {
 } from 'react-native';
 
 // Firebase Auth import kiya
-import auth from '@react-native-firebase/auth';
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider,signInWithCredential } from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const SignupScreen = ({navigation}) => {
+
+    useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '807058046291-qjd49uj4j1ujceuodom0a5ffabtilsgu.apps.googleusercontent.com', // Apna Client ID yahan dalein
+    });
+  }, []);
+
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -29,7 +37,7 @@ const SignupScreen = ({navigation}) => {
     
     try {
       // Firebase mein user create kar rahe hain
-      await auth().createUserWithEmailAndPassword(email, password);
+      await createUserWithEmailAndPassword(getAuth(), email, password);
       Alert.alert('Success', 'Account created successfully!');
       
       // Account banne ke baad Login screen par bhej dein
@@ -43,6 +51,26 @@ const SignupScreen = ({navigation}) => {
       } else {
         Alert.alert('Error', error.message);
       }
+    }
+  };
+
+  // Google Login / Signup Logic
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const { idToken } = await GoogleSignin.signIn();
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(getAuth(), googleCredential);
+
+      // Check if user is NEW or OLD
+      if (userCredential.additionalUserInfo.isNewUser) {
+        Alert.alert('Welcome!', 'Your new account has been created successfully using Google..');
+      } else {
+        Alert.alert('Welcome Back!', 'You have successfully logged in.');
+      }
+    } catch (error) {
+      console.log('Google Auth Error: ', error);
+      Alert.alert('Error', 'Google login failed!');
     }
   };
 
@@ -126,7 +154,7 @@ const SignupScreen = ({navigation}) => {
 
       {/* Social Login Buttons (Google & Apple) */}
       <View style={styles.socialContainer}>
-        <TouchableOpacity style={styles.socialButton}>
+        <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin}>
           <Image
             source={require('../../assets/icons/google-logo.png')}
             style={styles.googleIconSt}
