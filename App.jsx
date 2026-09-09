@@ -1,17 +1,19 @@
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { View, Text, Image } from 'react-native'
-import React from 'react'
+import React, {useState,useEffect}from 'react'
 import {CustomButton} from './src/components/CustomButton.jsx'
 import {COLORS} from './src/constant/colors.js'
 import { styles } from './src/styleSheet.js'
 import { SignupScreen} from './src/screens/auth/SignupScreen.jsx'
 import { LoginScreen} from './src/screens/auth/LoginScreen.jsx'
+import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
+import TabNavigator from './src/navigation/TabNavigator';
 
 
 const Stack = createNativeStackNavigator()
 
-function HomeScreen({navigation}) {
+function WelcomeScreen({navigation}) {
   return (
     <View style={{flex: 1, justifyContent: 'center', alignItems: 'center',backgroundColor: "white" }}>
       <Image source={require ('./src/assets/OnboardingImage.png')}
@@ -21,9 +23,21 @@ function HomeScreen({navigation}) {
         <Text style={{color: COLORS.primary}}>Me</Text>
       </Text>
       <View style= {{width: '100%'}}>
-      <CustomButton title="Get Started" bgColor= {COLORS.primary} textColor="white" marginTop = {33} />
-      <CustomButton title="Log in" bgColor= {COLORS.white} textColor="black" 
-       marginTop = {23} borderwith= {1} onPress={()=> navigation.navigate('SignupScreen')}/>
+      <CustomButton 
+          title="Get Started" 
+          bgColor={COLORS.primary} 
+          textColor="white" 
+          marginTop={33} 
+          onPress={() => navigation.navigate('SignupScreen')} 
+        />
+      <CustomButton 
+          title="Log in" 
+          bgColor={COLORS.white} 
+          textColor="black" 
+          marginTop={23} 
+          borderwith={1} 
+          onPress={() => navigation.navigate('Login')}
+        />
       </View>
       <Text style= {{marginTop: 10}} >By continuing you agree to our </Text>
       <Text style={{fontWeight:'bold'}}>Terms & Privacy Policy</Text>
@@ -32,15 +46,35 @@ function HomeScreen({navigation}) {
 }
 
 const App = () => {
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    const subscriber = onAuthStateChanged(getAuth(), (currentUser) => {
+      setUser(currentUser);
+      if (initializing) setInitializing(false);
+    });
+    return subscriber;
+  }, [initializing]);
+if (initializing) return null; 
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{headerShown: false}}>
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name='SignupScreen' component={SignupScreen} />
-        <Stack.Screen name="Login" component={LoginScreen} />
+        
+        {user ? (
+          <Stack.Screen name="MainTabs" component={TabNavigator} />
+        ) : (
+          <>
+            <Stack.Screen name="Welcome" component={WelcomeScreen} />
+            <Stack.Screen name="SignupScreen" component={SignupScreen} />
+            <Stack.Screen name="Login" component={LoginScreen} />
+          </>
+        )}
+
       </Stack.Navigator>
     </NavigationContainer>
   )
 }
+
 
 export default App

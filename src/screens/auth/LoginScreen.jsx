@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,13 +6,54 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   ScrollView, 
-  Image
+  Image,
+  Alert
 } from 'react-native';
+import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const LoginScreen = ({ navigation }) => {
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '807058046291-ngttgnpce87anmnsrih9um8o817bb968.apps.googleusercontent.com',
+    });
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
+
+  // Manual Email/Password Login
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
+    try {
+      await signInWithEmailAndPassword(getAuth(), email, password);
+      Alert.alert('Success', 'Logged in successfully!');
+      // navigation.navigate('Home'); // Baad mein Home screen par bhejenge
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  // Google Login
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const response = await GoogleSignin.signIn();
+      
+      if (response.type === 'success') {
+        const { idToken } = response.data;
+        const googleCredential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(getAuth(), googleCredential);
+        Alert.alert('Success', 'Google Login Successful!');
+      }
+    } catch (error) {
+      console.log('Google Auth Error: ', error);
+      Alert.alert('Error', 'Google login failed!');
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -61,7 +102,7 @@ const LoginScreen = ({ navigation }) => {
       </TouchableOpacity>
 
       {/* Log In Button */}
-      <TouchableOpacity style={styles.loginButton}>
+      <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.loginButtonText}>Log In</Text>
       </TouchableOpacity>
 
@@ -70,7 +111,8 @@ const LoginScreen = ({ navigation }) => {
 
       {/* Social Login Buttons (Google & Apple) */}
       <View style={styles.socialContainer}>
-        <TouchableOpacity style={styles.socialButton}>
+        {/* Google Button */}
+        <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin}>
           <Image
             source={require('../../assets/icons/google-logo.png')}
             style={styles.googleIconSt}
