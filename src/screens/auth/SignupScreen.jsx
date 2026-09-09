@@ -18,7 +18,7 @@ const SignupScreen = ({navigation}) => {
 
     useEffect(() => {
     GoogleSignin.configure({
-      webClientId: '807058046291-qjd49uj4j1ujceuodom0a5ffabtilsgu.apps.googleusercontent.com', // Apna Client ID yahan dalein
+      webClientId: '807058046291-ngttgnpce87anmnsrih9um8o817bb968.apps.googleusercontent.com', // Apna Client ID yahan dalein
     });
   }, []);
 
