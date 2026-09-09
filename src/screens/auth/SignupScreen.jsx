@@ -55,24 +55,30 @@ const SignupScreen = ({navigation}) => {
   };
 
   // Google Login / Signup Logic
-  const handleGoogleLogin = async () => {
-    try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const { idToken } = await GoogleSignin.signIn();
+const handleGoogleLogin = async () => {
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+    const response = await GoogleSignin.signIn();
+
+    if (response.type === 'success') {
+      const { idToken } = response.data;
       const googleCredential = GoogleAuthProvider.credential(idToken);
       const userCredential = await signInWithCredential(getAuth(), googleCredential);
 
-      // Check if user is NEW or OLD
       if (userCredential.additionalUserInfo.isNewUser) {
         Alert.alert('Welcome!', 'Your new account has been created successfully using Google..');
       } else {
         Alert.alert('Welcome Back!', 'You have successfully logged in.');
       }
-    } catch (error) {
-      console.log('Google Auth Error: ', error);
-      Alert.alert('Error', 'Google login failed!');
+    } else {
+      console.log('User cancelled Google sign in');
     }
-  };
+  } catch (error) {
+    console.log('Google Auth Error: ', error);
+    Alert.alert('Error', 'Google login failed!');
+  }
+};
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
