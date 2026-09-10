@@ -16,24 +16,23 @@ export default function TabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarShowLabel: false, // Text labels hide kar diye taake clean look aaye (Instagram ki tarah)
-        tabBarActiveTintColor: '#5A9624', // Active tab ka green color
-        tabBarInactiveTintColor: '#888888', // Inactive tab ka grey color
+        tabBarShowLabel: false, 
+        tabBarActiveTintColor: '#5A9624', 
+        tabBarInactiveTintColor: '#888888', 
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
           borderTopColor: '#eee',
-          height: 60, // Bar ki height thori set ki hai
+          height: 60, 
         },
-        // Icons set karne ka logic
+        
         tabBarIcon: ({ color, size }) => {
           let iconSource;
 
     if (route.name === 'Home') {
             iconSource = require('../assets/icons/home.png');
           } else if (route.name === 'Discover') {
-            // NOTE: search icon ka poora naam khud dekh lijiyega, yahan maine guess kiya hai
-            iconSource = require('../assets/icons/search-interface.png'); 
+            iconSource = require('../assets/icons/search-interface-symbol.png'); 
           } else if (route.name === 'Create') {
             iconSource = require('../assets/icons/add-button.png');
           } else if (route.name === 'Inbox') {
@@ -48,7 +47,7 @@ export default function TabNavigator() {
               style={{
                 width: 26,
                 height: 26,
-                tintColor: color, // Yeh line active/inactive ka color khud badal degi
+                tintColor: color, 
               }}
             />
           );
