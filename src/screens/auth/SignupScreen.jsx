@@ -7,18 +7,19 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   ScrollView,
-  Alert // Alert import kiya messages ke liye
+  Alert 
 } from 'react-native';
 
-// Firebase Auth import kiya
-import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider,signInWithCredential } from '@react-native-firebase/auth';
+// Firebase Auth & Firestore imports
+import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from '@react-native-firebase/auth';
+import { getFirestore, doc, setDoc, serverTimestamp } from '@react-native-firebase/firestore'; // NAYA: Firestore import kiya
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const SignupScreen = ({navigation}) => {
 
-    useEffect(() => {
+  useEffect(() => {
     GoogleSignin.configure({
-      webClientId: '807058046291-ngttgnpce87anmnsrih9um8o817bb968.apps.googleusercontent.com', // Apna Client ID yahan dalein
+      webClientId: '807058046291-ngttgnpce87anmnsrih9um8o817bb968.apps.googleusercontent.com', 
     });
   }, []);
 
@@ -28,16 +29,33 @@ const SignupScreen = ({navigation}) => {
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
 
-  // Firebase Signup Function
+  // 1. UPDATED: Firebase Signup Function (Auth + Firestore)
   const handleSignup = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
+    // Validation mein name aur username bhi add kar diye
+    if (!email || !password || !fullName || !username) {
+      Alert.alert('Error', 'Please fill all fields');
       return;
     }
     
     try {
-      // Firebase mein user create kar rahe hain
-      await createUserWithEmailAndPassword(getAuth(), email, password);
+      // Step A: Firebase Auth mein user create karna
+      const userCredential = await createUserWithEmailAndPassword(getAuth(), email, password);
+      const uid = userCredential.user.uid;
+
+      // Step B: Firestore ke 'users' collection mein profile document banana
+      const db = getFirestore();
+      await setDoc(doc(db, 'users', uid), {
+        name: fullName,
+        username: username.toLowerCase().replace(/\s+/g, ''), // Spaces hata kar lower case
+        email: email,
+        profilePic: null, // Shuru me koi pic nahi
+        bio: '',
+        followersCount: 0,
+        followingCount: 0,
+        avgRating: 0,
+        createdAt: serverTimestamp(),
+      });
+
       Alert.alert('Success', 'Account created successfully!');
       
       // Account banne ke baad Login screen par bhej dein
@@ -54,31 +72,51 @@ const SignupScreen = ({navigation}) => {
     }
   };
 
-  // Google Login / Signup Logic
-const handleGoogleLogin = async () => {
-  try {
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+  // 2. UPDATED: Google Login / Signup Logic (Auth + Firestore)
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
-    const response = await GoogleSignin.signIn();
+      const response = await GoogleSignin.signIn();
 
-    if (response.type === 'success') {
-      const { idToken } = response.data;
-      const googleCredential = GoogleAuthProvider.credential(idToken);
-      const userCredential = await signInWithCredential(getAuth(), googleCredential);
+      if (response.type === 'success') {
+        const { idToken } = response.data;
+        const googleCredential = GoogleAuthProvider.credential(idToken);
+        const userCredential = await signInWithCredential(getAuth(), googleCredential);
 
-      if (userCredential.additionalUserInfo.isNewUser) {
-        Alert.alert('Welcome!', 'Your new account has been created successfully using Google..');
+        // Agar user pehli dafa Google se signup kar raha hai, tou Firestore me document banao
+        if (userCredential.additionalUserInfo.isNewUser) {
+          const uid = userCredential.user.uid;
+          const user = userCredential.user;
+          const db = getFirestore();
+          
+          // Google user ka default username generate kar lo
+          const defaultUsername = user.displayName ? user.displayName.replace(/\s+/g, '').toLowerCase() + Math.floor(Math.random() * 1000) : 'user_' + uid.slice(0,5);
+
+          await setDoc(doc(db, 'users', uid), {
+            name: user.displayName || 'Google User',
+            username: defaultUsername,
+            email: user.email,
+            profilePic: user.photoURL || null,
+            bio: '',
+            followersCount: 0,
+            followingCount: 0,
+            avgRating: 0,
+            createdAt: serverTimestamp(),
+          });
+
+          Alert.alert('Welcome!', 'Your new account has been created successfully using Google.');
+        } else {
+          Alert.alert('Welcome Back!', 'You have successfully logged in.');
+        }
       } else {
-        Alert.alert('Welcome Back!', 'You have successfully logged in.');
+        console.log('User cancelled Google sign in');
       }
-    } else {
-      console.log('User cancelled Google sign in');
+    } catch (error) {
+      console.log('Google Auth Error: ', error);
+      Alert.alert('Error', 'Google login failed!');
     }
-  } catch (error) {
-    console.log('Google Auth Error: ', error);
-    Alert.alert('Error', 'Google login failed!');
-  }
-};
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -116,7 +154,7 @@ const handleGoogleLogin = async () => {
         />
       </View>
 
-   {/* Username Field */}
+      {/* Username Field */}
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Username</Text>
         <TextInput 
@@ -150,7 +188,7 @@ const handleGoogleLogin = async () => {
         />
       </View>
 
-      {/* Sign Up Button -> Yahan onPress mein handleSignup laga diya */}
+      {/* Sign Up Button */}
       <TouchableOpacity style={styles.signUpButton} onPress={handleSignup}>
         <Text style={styles.signUpText}>Sign Up</Text>
       </TouchableOpacity>
@@ -191,7 +229,7 @@ const styles = StyleSheet.create({
     padding: 20,
     flexGrow: 1,
     justifyContent: 'center',
-    backgroundColor: '#fff' // Ek safed background add kiya acha dikhne ke liye
+    backgroundColor: '#fff' 
   },
   header: {
     flexDirection: 'row',
@@ -287,7 +325,7 @@ const styles = StyleSheet.create({
     color: '#888',
   },
   signUpButton: {
-    backgroundColor: '#5A9624', // Match green theme
+    backgroundColor: '#5A9624', 
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',
