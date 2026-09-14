@@ -7,8 +7,11 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   ScrollView,
-  Alert 
+  Alert,
+  ActivityIndicator
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { uploadImageToCloudinary } from '../../services/cloudinaryService';
 
 // Firebase Auth & Firestore imports
 import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from '@react-native-firebase/auth';
@@ -28,19 +31,35 @@ const SignupScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
+  const [profilePicUri, setProfilePicUri] = useState(null);
+  const [isSigningUp, setIsSigningUp] = useState(false);
 
   // 1. UPDATED: Firebase Signup Function (Auth + Firestore)
-  const handleSignup = async () => {
+  const pickProfileImage = async () => {
+    const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.5 });
+    if (!result.didCancel && result.assets) {
+      setProfilePicUri(result.assets[0].uri);
+    }
+  };
+const handleSignup = async () => {
     // Validation mein name aur username bhi add kar diye
     if (!email || !password || !fullName || !username) {
       Alert.alert('Error', 'Please fill all fields');
       return;
     }
     
+    setIsSigningUp(true); // NAYA: Button loading shuru
+
     try {
       // Step A: Firebase Auth mein user create karna
       const userCredential = await createUserWithEmailAndPassword(getAuth(), email, password);
       const uid = userCredential.user.uid;
+
+      // NAYA: Agar user ne gallery se pic select ki hai tou pehle Cloudinary par upload karein
+      let uploadedPicUrl = null;
+      if (profilePicUri) {
+        uploadedPicUrl = await uploadImageToCloudinary(profilePicUri);
+      }
 
       // Step B: Firestore ke 'users' collection mein profile document banana
       const db = getFirestore();
@@ -48,7 +67,7 @@ const SignupScreen = ({navigation}) => {
         name: fullName,
         username: username.toLowerCase().replace(/\s+/g, ''), // Spaces hata kar lower case
         email: email,
-        profilePic: null, // Shuru me koi pic nahi
+        profilePic: uploadedPicUrl, // NAYA: Upload hui pic ka URL yahan save hoga
         bio: '',
         followersCount: 0,
         followingCount: 0,
@@ -69,9 +88,10 @@ const SignupScreen = ({navigation}) => {
       } else {
         Alert.alert('Error', error.message);
       }
+    } finally {
+      setIsSigningUp(false); // NAYA: Loading band kar do, chahe success ho ya error
     }
   };
-
   // 2. UPDATED: Google Login / Signup Logic (Auth + Firestore)
   const handleGoogleLogin = async () => {
     try {
@@ -130,10 +150,10 @@ const SignupScreen = ({navigation}) => {
       </View>
       <Text style={styles.subtitle}>Join RateMe and start your journey</Text>
 
-      {/* Profile Picture with Camera Icon */}
-      <View style={styles.profileContainer}>
+    {/* Profile Picture with Camera Icon */}
+      <TouchableOpacity style={styles.profileContainer} onPress={pickProfileImage}>
         <Image 
-          source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500' }} 
+          source={{ uri: profilePicUri || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500' }} 
           style={styles.profileImage} 
         />
         <View style={styles.cameraBadge}>
@@ -142,7 +162,7 @@ const SignupScreen = ({navigation}) => {
           source={require('../../assets/icons/photo-camera-interface-symbol-for-button.png')}
           />
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Full Name Field */}
       <View style={styles.inputGroup}>
@@ -189,8 +209,16 @@ const SignupScreen = ({navigation}) => {
       </View>
 
       {/* Sign Up Button */}
-      <TouchableOpacity style={styles.signUpButton} onPress={handleSignup}>
-        <Text style={styles.signUpText}>Sign Up</Text>
+    <TouchableOpacity 
+        style={[styles.signUpButton, isSigningUp && { opacity: 0.7 }]} 
+        onPress={handleSignup}
+        disabled={isSigningUp}
+      >
+        {isSigningUp ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.signUpText}>Sign Up</Text>
+        )}
       </TouchableOpacity>
 
       {/* Divider / Social Login Text */}

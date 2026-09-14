@@ -26,32 +26,34 @@ export default function TabNavigator() {
           height: 60, 
         },
         
-        tabBarIcon: ({ color, size }) => {
-          let iconSource;
+tabBarIcon: ({ color, size }) => {
+  let iconSource;
+  let applyTint = true; // NAYA
 
-    if (route.name === 'Home') {
-            iconSource = require('../assets/icons/home.png');
-          } else if (route.name === 'Discover') {
-            iconSource = require('../assets/icons/search-interface-symbol.png'); 
-          } else if (route.name === 'Create') {
-            iconSource = require('../assets/icons/add-button.png');
-          } else if (route.name === 'Inbox') {
-            iconSource = require('../assets/icons/bell.png');
-          } else if (route.name === 'Profile') {
-            iconSource = require('../assets/icons/user.png');
-          }
+  if (route.name === 'Home') {
+    iconSource = require('../assets/icons/home.png');
+  } else if (route.name === 'Discover') {
+    iconSource = require('../assets/icons/search-interface-symbol.png'); 
+  } else if (route.name === 'Create') {
+    iconSource = require('../assets/icons/add-button.png');
+    applyTint = false; // Create icon apna original color rakhega
+  } else if (route.name === 'Inbox') {
+    iconSource = require('../assets/icons/bell.png');
+  } else if (route.name === 'Profile') {
+    iconSource = require('../assets/icons/user.png');
+  }
 
-          return (
-            <Image
-              source={iconSource}
-              style={{
-                width: 26,
-                height: 26,
-                tintColor: color, 
-              }}
-            />
-          );
-        },
+  return (
+    <Image
+      source={iconSource}
+      style={{
+        width: 26,
+        height: 26,
+        tintColor: applyTint ? color : undefined, // NAYA
+      }}
+    />
+  );
+},
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />

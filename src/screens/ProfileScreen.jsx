@@ -149,7 +149,7 @@ export default function ProfileScreen({ navigation }) {
               />
               <Text style={styles.nameText}>{userData?.name || 'Loading...'}</Text>
               <Text style={styles.usernameText}>@{userData?.username || 'user'}</Text>
-              <Text style={styles.bioText}>{userData?.bio || 'Add a bio to your profile ✍️'}</Text>
+              <Text style={styles.bioText}>{userData?.bio || 'Add a bio to your profile'}</Text>
 
               <TouchableOpacity style={styles.editButton} onPress={openEditModal}>
                 <Text style={styles.editButtonText}>Edit Profile</Text>

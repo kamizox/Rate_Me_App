@@ -137,7 +137,11 @@ return (
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Discover</Text>
         <View style={styles.searchContainer}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          {/* <Text style={styles.searchIcon}>🔍</Text> */}
+          <Image 
+  source={require('../assets/icons/search-interface-symbol.png')} 
+  style={{ width: 18, height: 18, marginRight: 8, tintColor: '#060505' }} 
+/>
           <TextInput style={styles.searchInput} placeholder="Search users by @username..." value={searchQuery} onChangeText={handleSearch} autoCapitalize="none" />
         </View>
       </View>
@@ -154,7 +158,7 @@ return (
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={styles.contentContainer}>
-              <Text style={styles.sectionTitle}>Top Creators 🌟</Text>
+              <Text style={styles.sectionTitle}>Top Creators</Text>
               <FlatList horizontal showsHorizontalScrollIndicator={false} data={topCreators} keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                   <TouchableOpacity style={styles.topCreatorCard} onPress={() => navigation.navigate('PublicProfile', { userId: item.id })}>

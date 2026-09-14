@@ -135,6 +135,7 @@ await addDoc(collection(getFirestore(), 'challenges'), {
         <TextInput 
           style={styles.input} 
           placeholder="e.g., Which outfit looks better?"
+          placeholderTextColor="#666666"
           value={question}
           onChangeText={setQuestion}
         />
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
   // Step 2 Styles
   formContainer: { padding: 20 },
   label: { fontSize: 16, fontWeight: 'bold', color: '#000', marginBottom: 10, marginTop: 10 },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 15, fontSize: 15, backgroundColor: '#fafafa', marginBottom: 20 },
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 15, fontSize: 15, backgroundColor: '#f5f1f1', marginBottom: 20 },
   
   imageSelectorRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 15, marginBottom: 30 },
   imageBox: { flex: 1, height: 180, backgroundColor: '#f0f0f0', borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
