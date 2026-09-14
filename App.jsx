@@ -63,7 +63,10 @@ if (initializing) return null;
       <Stack.Navigator screenOptions={{headerShown: false}}>
         
         {user ? (
-          <Stack.Screen name="MainTabs" component={TabNavigator} />
+           <>
+    <Stack.Screen name="MainTabs" component={TabNavigator} />
+    <Stack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ headerShown: false }} />
+  </>
         ) : (
           <>
             <Stack.Screen name="Welcome" component={WelcomeScreen} />

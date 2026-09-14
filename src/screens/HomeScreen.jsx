@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native'
 import { getAuth, signOut } from '@react-native-firebase/auth';
 // NAYA: serverTimestamp import kiya hai
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp } from '@react-native-firebase/firestore';
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp,where } from '@react-native-firebase/firestore';
 import { COLORS } from '../constant/colors';
 
 const PostCard = ({ item, userVotes, onVote,navigation }) => {
@@ -83,18 +83,29 @@ export default function HomeScreen({ navigation }) {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userVotes, setUserVotes] = useState({}); 
+  const HOME_CATEGORIES = ['All', 'Fashion', 'Food', 'Travel', 'Fun', 'Sports', 'Tech'];
+  const [activeCategory, setActiveCategory] = useState('All');
 
-  useEffect(() => {
+ useEffect(() => {
     const db = getFirestore();
-    const q = query(collection(db, 'challenges'), orderBy('createdAt', 'desc'));
+    let q;
+    
+    // Agar 'All' selected hai tou sab dikhao, warna sirf selected category dikhao
+    if (activeCategory === 'All') {
+      q = query(collection(db, 'challenges'), orderBy('createdAt', 'desc'));
+    } else {
+      q = query(collection(db, 'challenges'), where('category', '==', activeCategory), orderBy('createdAt', 'desc'));
+    }
+
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const posts = [];
       querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data() }); });
       setChallenges(posts);
       setLoading(false);
     });
+    
     return () => unsubscribe();
-  }, []);
+  }, [activeCategory]); // Yahan activeCategory daalna zaroori hai
 
   const handleLogout = () => {
     signOut(getAuth()).then(() => console.log('User signed out!'));
@@ -164,6 +175,32 @@ export default function HomeScreen({ navigation }) {
           keyExtractor={(item) => item.id} 
           showsVerticalScrollIndicator={false} 
           contentContainerStyle={{ paddingBottom: 20 }}
+          // NAYA: Header jisme Tabs aur Categories hain
+          ListHeaderComponent={
+            <View style={{ padding: 15 }}>
+              {/* For You / Following Tabs */}
+              <View style={{ flexDirection: 'row', gap: 20, marginBottom: 15 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: COLORS.primary || '#5A9624', borderBottomWidth: 2, borderBottomColor: COLORS.primary || '#5A9624', paddingBottom: 5 }}>For You</Text>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#888' }}>Following</Text>
+              </View>
+
+              {/* Categories ScrollBar */}
+              <FlatList 
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={HOME_CATEGORIES}
+                keyExtractor={(item) => item}
+                renderItem={({item}) => (
+                  <TouchableOpacity 
+                    style={[styles.homeCatBadge, activeCategory === item && styles.homeActiveCatBadge]}
+                    onPress={() => setActiveCategory(item)}
+                  >
+                    <Text style={[styles.homeCatText, activeCategory === item && styles.homeActiveCatText]}>{item}</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          }
           renderItem={({ item }) => (
             <PostCard 
               item={item} 
@@ -200,6 +237,10 @@ const styles = StyleSheet.create({
   totalVotesText: { textAlign: 'right', marginTop: 10, color: '#666', fontSize: 13, fontWeight: 'bold' },
   resultOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
   percentText: { color: '#fff', fontSize: 32, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 3 },
+  homeCatBadge: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 10 },
+  homeActiveCatBadge: { backgroundColor: COLORS.primary || '#5A9624' },
+  homeCatText: { color: '#666', fontWeight: 'bold' },
+  homeActiveCatText: { color: '#fff' },
   yourChoiceText: { color: '#fff', backgroundColor: COLORS.primary || '#5A9624', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, fontSize: 12, fontWeight: 'bold', marginTop: 10 },
   selectedBorder: { borderWidth: 3, borderColor: COLORS.primary || '#5A9624' }
 });

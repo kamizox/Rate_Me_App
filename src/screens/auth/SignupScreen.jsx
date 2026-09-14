@@ -332,6 +332,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     fontSize: 14,
     backgroundColor: '#fafafa',
+    color: '#000',
   },
   inputWithTextContainer: {
     flexDirection: 'row',

@@ -8,11 +8,11 @@ import { getAuth } from '@react-native-firebase/auth';
 import { COLORS } from '../constant/colors';
 
 const CHALLENGE_TYPES = [
-  { id: '1', title: 'A vs B', desc: 'Compare two things', icon: '🅰️', type: 'A_vs_B' },
-  { id: '2', title: 'Rate 1–10', desc: 'Let people rate', icon: '⭐', type: 'RATE' },
-  { id: '3', title: 'Yes / No', desc: 'Ask a yes or no question', icon: '👍', type: 'YES_NO' },
-  { id: '4', title: 'Poll', desc: 'Create a poll', icon: '📊', type: 'POLL' },
-  { id: '5', title: 'Guess', desc: 'Let people guess', icon: '❓', type: 'GUESS' },
+  { id: '1', title: 'A vs B', desc: 'Compare two things', icon: require('../assets/icons/testing.png'), type: 'A_vs_B' },
+  { id: '2', title: 'Rate 1–10', desc: 'Let people rate', icon: require('../assets/icons/rating.png'), type: 'RATE' },
+  { id: '3', title: 'Yes / No', desc: 'Ask a yes or no question', icon: require('../assets/icons/score.png'), type: 'YES_NO' },
+  { id: '4', title: 'Poll', desc: 'Create a poll', icon: require('../assets/icons/polling.png'), type: 'POLL' },
+  { id: '5', title: 'Guess', desc: 'Let people guess', icon: require('../assets/icons/guess.png'), type: 'GUESS' },
 ];
 
 export default function CreateScreen({ navigation }) {
@@ -24,6 +24,8 @@ export default function CreateScreen({ navigation }) {
   const [imageA, setImageA] = useState(null);
   const [imageB, setImageB] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const CATEGORIES = ['Fashion', 'Food', 'Travel', 'Fun', 'Sports', 'Tech'];
+  const [selectedCategory, setSelectedCategory] = useState('Fashion'); // Default Fashion set kar diya
 
   const handleSelectType = (item) => {
     setSelectedType(item);
@@ -65,6 +67,7 @@ export default function CreateScreen({ navigation }) {
 await addDoc(collection(getFirestore(), 'challenges'), {
   type: selectedType.type,
   question: question,
+  category: selectedCategory,
   imageA_URL: urlA,
   imageB_URL: urlB,
   creatorId: currentUser ? currentUser.uid : 'anonymous',
@@ -106,7 +109,7 @@ await addDoc(collection(getFirestore(), 'challenges'), {
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.typeCard} onPress={() => handleSelectType(item)}>
               <View style={styles.iconCircle}>
-                <Text style={styles.iconText}>{item.icon}</Text>
+                <Image source={item.icon} style={styles.customIcon} />
               </View>
               <View style={styles.textContainer}>
                 <Text style={styles.cardTitle}>{item.title}</Text>
@@ -139,6 +142,19 @@ await addDoc(collection(getFirestore(), 'challenges'), {
           value={question}
           onChangeText={setQuestion}
         />
+        {/* NAYA: Categories Section */}
+        <Text style={styles.label}>Category</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+          {CATEGORIES.map((cat) => (
+            <TouchableOpacity 
+              key={cat} 
+              style={[styles.catBadge, selectedCategory === cat && styles.activeCatBadge]}
+              onPress={() => setSelectedCategory(cat)}
+            >
+              <Text style={[styles.catText, selectedCategory === cat && styles.activeCatText]}>{cat}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         <Text style={styles.label}>Add Photos</Text>
         <View style={styles.imageSelectorRow}>
@@ -189,7 +205,12 @@ const styles = StyleSheet.create({
   // Step 1 Styles
   questionText: { fontSize: 22, fontWeight: 'bold', color: '#000', margin: 20 },
   typeCard: { flexDirection: 'row', alignItems: 'center', padding: 15, marginHorizontal: 20, marginBottom: 15, backgroundColor: '#f9f9f9', borderRadius: 12, borderWidth: 1, borderColor: '#eee' },
-  iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#e8f5e9', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+ iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  
+  // NAYA: Custom Icon ka style
+customIcon: { width: 42, height: 42, resizeMode: 'contain' }, 
+  
+  // iconText: { fontSize: 24 }, <-- Isko aap chahein tou mita sakte hain kyunke ab ye use nahi ho raha
   iconText: { fontSize: 24 },
   textContainer: { flex: 1 },
   cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#000', marginBottom: 4 },
@@ -199,11 +220,17 @@ const styles = StyleSheet.create({
   formContainer: { padding: 20 },
   label: { fontSize: 16, fontWeight: 'bold', color: '#000', marginBottom: 10, marginTop: 10 },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 15, fontSize: 15, backgroundColor: '#f5f1f1', marginBottom: 20 },
+
+  catBadge: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd' },
+  activeCatBadge: { backgroundColor: COLORS.primary || '#5A9624', borderColor: COLORS.primary || '#5A9624' },
+  catText: { color: '#666', fontWeight: 'bold' },
+  activeCatText: { color: '#fff' },
   
   imageSelectorRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 15, marginBottom: 30 },
   imageBox: { flex: 1, height: 180, backgroundColor: '#f0f0f0', borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
   previewImage: { width: '100%', height: '100%', borderRadius: 10 },
   addPhotoText: { color: '#888', fontWeight: 'bold' },
+  
 
   publishButton: { backgroundColor: COLORS.primary || '#5A9624', padding: 16, borderRadius: 10, alignItems: 'center' },
   publishButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
