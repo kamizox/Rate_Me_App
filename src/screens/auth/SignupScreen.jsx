@@ -59,7 +59,7 @@ const handleSignup = async () => {
 
       if (!querySnapshot.empty) {
         // Agar record mil gaya, tou iska matlab username pehle se kisi ne liya hua hai
-        Alert.alert('Username Taken', 'Yeh username pehle se kisi ne liya hua hai. Barae meharbani koi aur try karein!');
+        Alert.alert('Username Taken', 'This username is already taken. Please try another one!');
         setIsSigningUp(false);
         return; // Yahan se code aage nahi jayega
       }

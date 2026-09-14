@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAuth, signOut } from '@react-native-firebase/auth';
 // NAYA: onSnapshot import kiya live updates ke liye
-import { getFirestore, doc, collection, query, where, updateDoc, onSnapshot } from '@react-native-firebase/firestore';
+import { getFirestore, doc, collection, query, where, updateDoc, onSnapshot ,getDocs, getDoc} from '@react-native-firebase/firestore';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { uploadImageToCloudinary } from '../services/cloudinaryService';
 import { COLORS } from '../constant/colors';
@@ -15,6 +15,7 @@ export default function ProfileScreen({ navigation }) {
   const [userPosts, setUserPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Created');
+  const [savedPosts, setSavedPosts] = useState([]);
 
   // --- EDIT PROFILE STATES ---
   const [isEditModalVisible, setEditModalVisible] = useState(false);
@@ -33,14 +34,14 @@ export default function ProfileScreen({ navigation }) {
 
     // 1. User Profile ki live detail (Followers, Following, Name waghera)
     const unsubscribeUser = onSnapshot(doc(db, 'users', currentUser.uid), (docSnapshot) => {
-      if (docSnapshot.exists) {
+      if (docSnapshot.exists()) {
         setUserData(docSnapshot.data());
       }
     });
 
     // 2. User ki apni Posts ki live detail
     const q = query(collection(db, 'challenges'), where('creatorId', '==', currentUser.uid));
-    const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
+    const unsubscribePosts = onSnapshot(q,async (querySnapshot) => {
       const posts = [];
       querySnapshot.forEach((doc) => {
         posts.push({ id: doc.id, ...doc.data() });
@@ -49,6 +50,18 @@ export default function ProfileScreen({ navigation }) {
       posts.sort((a, b) => b.createdAt - a.createdAt);
       setUserPosts(posts);
       setLoading(false); // Data aate hi loading band
+      // Saved challenges fetch karna
+const savedSnap = await getDocs(collection(db, `users/${currentUser.uid}/savedChallenges`));
+const savedIds = savedSnap.docs.map(doc => doc.id);
+
+const savedChallenges = [];
+for (const id of savedIds) {
+  const challengeDoc = await getDoc(doc(db, 'challenges', id));
+  if (challengeDoc.exists()) {
+    savedChallenges.push({ id: challengeDoc.id, ...challengeDoc.data() });
+  }
+}
+setSavedPosts(savedChallenges);
     }, (error) => {
       console.log("Error fetching profile posts:", error);
       setLoading(false);
@@ -136,7 +149,7 @@ export default function ProfileScreen({ navigation }) {
       </View>
 
       <FlatList
-        data={activeTab === 'Created' ? userPosts : []}
+        data={activeTab === 'Created' ? userPosts : activeTab === 'Saved' ? savedPosts : []}
         keyExtractor={(item) => item.id}
         numColumns={2}
         showsVerticalScrollIndicator={false}
@@ -154,6 +167,9 @@ export default function ProfileScreen({ navigation }) {
               <TouchableOpacity style={styles.editButton} onPress={openEditModal}>
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate('Leaderboard')} style={styles.editButton}>
+  <Text style={styles.editButtonText}>🏆 Leaderboard</Text>
+</TouchableOpacity>
             </View>
 
             <View style={styles.statsContainer}>

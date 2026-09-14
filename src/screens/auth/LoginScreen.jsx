@@ -42,16 +42,16 @@ const LoginScreen = ({ navigation }) => {
   const handleForgotPassword = async () => {
     // Check karega ke email field mein email likhi hai ya nahi
     if (!email) {
-      Alert.alert('Email Required', 'Password reset karne ke liye pehle upar apna Email address likhein.');
+      Alert.alert('Email Required', 'Please enter your email address above before resetting your password.');
       return;
     }
     
     try {
       await sendPasswordResetEmail(getAuth(), email);
-      Alert.alert('Email Sent!', 'Password reset karne ka link aapke email par bhej diya gaya hai. Apna inbox check karein.');
+      Alert.alert('Email Sent!', 'A password reset link has been sent to your email. Please check your inbox.');
     } catch (error) {
       if (error.code === 'auth/user-not-found') {
-        Alert.alert('Error', 'Is email se koi account nahi mila.');
+        Alert.alert('Error', 'No account found with this email.');
       } else {
         Alert.alert('Error', error.message);
       }
@@ -151,7 +151,7 @@ const LoginScreen = ({ navigation }) => {
       {/* Footer / Sign Up Link */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+       <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
           <Text style={styles.signUpLink}>Sign Up</Text>
         </TouchableOpacity>
       </View>

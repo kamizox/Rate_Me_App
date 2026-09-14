@@ -48,17 +48,17 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
   const handleDelete = () => {
     Alert.alert(
       "Delete Challenge",
-      "Kiya aap waqai is challenge ko hamesha ke liye delete karna chahte hain?",
+      "Are you sure you want to permanently delete this challenge?",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Delete", style: "destructive", onPress: async () => {
             try {
               const db = getFirestore();
               await deleteDoc(doc(db, 'challenges', item.id));
-              Alert.alert("Deleted", "Aapka challenge delete ho gaya hai.");
+              Alert.alert("Deleted", "Your challenge has been deleted.");
             } catch (error) {
               console.log("Delete error:", error);
-              Alert.alert("Error", "Challenge delete nahi ho saka.");
+              Alert.alert("Error", "Could not delete the challenge.");
             }
         }}
       ]
@@ -69,7 +69,7 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
   const handleReport = () => {
     Alert.alert(
       "Report Post",
-      "Kiya aapko lagta hai ke yeh post rules ke khilaf ya inappropriate hai?",
+     "Do you think this post violates the rules or is inappropriate?",
       [
         { text: "Cancel", style: "cancel" },
         { text: "Report", style: "destructive", onPress: async () => {
@@ -82,10 +82,10 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
                 createdAt: serverTimestamp(),
                 status: 'pending' 
               });
-              Alert.alert("Reported", "Shukriya! Hamari team is post ko review karegi.");
+              Alert.alert("Reported", "Thank you! Our team will review this post.");
             } catch (error) {
               console.log("Report error:", error);
-              Alert.alert("Error", "Report submit nahi ho saki.");
+              Alert.alert("Error", "Could not submit the report.");
             }
         }}
       ]
@@ -341,7 +341,7 @@ export default function HomeScreen({ navigation }) {
     try {
       const voteDoc = await getDoc(voteRef);
       if (voteDoc.exists()) {
-        Alert.alert("Already Voted!", "Aap is challenge par pehle hi vote kar chuke hain.");
+        Alert.alert("Already Voted!", "You have already voted on this challenge.");
         setUserVotes(prev => ({ ...prev, [challengeId]: voteDoc.data().selectedOption }));
         return;
       }
@@ -394,7 +394,7 @@ export default function HomeScreen({ navigation }) {
 
     } catch (error) {
       console.log('Voting Error:', error);
-      Alert.alert('Error', 'Vote save nahi ho saka. Internet check karein.');
+      Alert.alert('Error', 'Could not save your vote. Please check your internet connection.');
     }
   };
 

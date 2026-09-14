@@ -62,12 +62,12 @@ export default function CreateScreen({ navigation }) {
     
     if (isPoll) {
       if (!question || !pollOptA || !pollOptB) {
-        Alert.alert('Incomplete', 'Question aur kam az kam 2 options dena zaroori hain.');
+        Alert.alert('Incomplete', 'A question and at least 2 options are required.');
         return;
       }
     } else if (isGuess) { // NAYA: Guess Validation
       if (!question || !imageA || !guessAnswer) {
-        Alert.alert('Incomplete', 'Question, Ek tasveer aur Correct Answer dena zaroori hai.');
+        Alert.alert('Incomplete', 'A question, one image, and the correct answer are required.');
         return;
       }
     } else {

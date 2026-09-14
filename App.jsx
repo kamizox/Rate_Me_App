@@ -10,6 +10,9 @@ import { LoginScreen} from './src/screens/auth/LoginScreen.jsx'
 import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
 import TabNavigator from './src/navigation/TabNavigator';
 import PublicProfileScreen from './src/screens/PublicProfileScreen';
+import ResultScreen from './src/screens/ResultScreen';
+import FollowListScreen from './src/screens/FollowListScreen';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
 
 
 const Stack = createNativeStackNavigator()
@@ -66,6 +69,9 @@ if (initializing) return null;
            <>
     <Stack.Screen name="MainTabs" component={TabNavigator} />
     <Stack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="ResultScreen" component={ResultScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerShown: false }} />
   </>
         ) : (
           <>

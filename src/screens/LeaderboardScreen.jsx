@@ -86,7 +86,10 @@ export default function LeaderboardScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Leaderboard 🏆</Text>
+  <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 15 }}>
+    <Text style={{ fontSize: 34, color: '#000' }}>←</Text>
+  </TouchableOpacity>
+  <Text style={styles.headerTitle}>Leaderboard 🏆</Text>
       </View>
 
       {/* Tabs (Creators | Challenges) */}
@@ -118,8 +121,8 @@ export default function LeaderboardScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { padding: 15, backgroundColor: '#fff', elevation: 2, alignItems: 'center' },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#000' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: '#fff', elevation: 2 },
+headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#000', flex: 1, textAlign: 'center', marginRight: 34 },
   tabContainer: { flexDirection: 'row', backgroundColor: '#fff' },
   tab: { flex: 1, paddingVertical: 15, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
   activeTab: { borderBottomColor: COLORS.primary || '#5A9624' },
