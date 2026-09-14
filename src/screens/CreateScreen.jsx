@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput, Image, ActivityIndicator, Alert  } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { uploadImageToCloudinary } from '../services/cloudinaryService'; // Aapka function
+import { uploadImageToCloudinary } from '../services/cloudinaryService'; 
 import { getFirestore, collection, addDoc, serverTimestamp } from '@react-native-firebase/firestore';
 import { getAuth } from '@react-native-firebase/auth';
 import { COLORS } from '../constant/colors';
@@ -18,14 +18,12 @@ const CHALLENGE_TYPES = [
 export default function CreateScreen({ navigation }) {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(null);
-
-  // Form States
   const [question, setQuestion] = useState('');
   const [imageA, setImageA] = useState(null);
   const [imageB, setImageB] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const CATEGORIES = ['Fashion', 'Food', 'Travel', 'Fun', 'Sports', 'Tech'];
-  const [selectedCategory, setSelectedCategory] = useState('Fashion'); // Default Fashion set kar diya
+  const [selectedCategory, setSelectedCategory] = useState('Fashion'); 
 
   const handleSelectType = (item) => {
     setSelectedType(item);
@@ -37,49 +35,44 @@ export default function CreateScreen({ navigation }) {
     setSelectedType(null);
   };
 
-  // Gallery se image uthane ka function
   const pickImage = async (type) => {
     const result = await launchImageLibrary({ mediaType: 'photo', quality: 0.8 });
     if (result.didCancel || !result.assets) return;
-    
     const uri = result.assets[0].uri;
     if (type === 'A') setImageA(uri);
     else setImageB(uri);
   };
 
-  // Cloudinary + Firestore Publish Logic
   const handlePublish = async () => {
-    if (!question || !imageA || !imageB) {
-      Alert.alert('Incomplete', 'Please add a question and select both images.');
+    // NAYA: Type ke hisaab se validation
+    const isAvsB = selectedType.type === 'A_vs_B';
+    
+    if (!question || !imageA || (isAvsB && !imageB)) {
+      Alert.alert('Incomplete', 'Please add a question and required photos.');
       return;
     }
 
     setIsPublishing(true);
     try {
-      // 1. Cloudinary par dono images upload karein
       const urlA = await uploadImageToCloudinary(imageA);
-      const urlB = await uploadImageToCloudinary(imageB);
-
-      // 2. Current user ki ID nikalein
+      // Agar type A vs B nahi hai tou doosri pic null jayegi
+      const urlB = isAvsB ? await uploadImageToCloudinary(imageB) : null;
       const currentUser = getAuth().currentUser;
 
-      // 3. Firestore ke 'challenges' collection mein data save karein
-await addDoc(collection(getFirestore(), 'challenges'), {
-  type: selectedType.type,
-  question: question,
-  category: selectedCategory,
-  imageA_URL: urlA,
-  imageB_URL: urlB,
-  creatorId: currentUser ? currentUser.uid : 'anonymous',
-  createdAt: serverTimestamp(),
-  voteCountA: 0,
-  voteCountB: 0,
-  totalVotes: 0,
-});
+      await addDoc(collection(getFirestore(), 'challenges'), {
+        type: selectedType.type,
+        question: question,
+        category: selectedCategory,
+        imageA_URL: urlA,
+        imageB_URL: urlB,
+        creatorId: currentUser ? currentUser.uid : 'anonymous',
+        createdAt: serverTimestamp(),
+        voteCountA: 0,
+        voteCountB: 0,
+        totalVotes: 0,
+      });
 
       Alert.alert('Success', 'Challenge Published successfully!');
-      
-      // Form reset karke Home par bhej dein
       setQuestion('');
       setImageA(null);
       setImageB(null);
@@ -94,7 +87,6 @@ await addDoc(collection(getFirestore(), 'challenges'), {
     }
   };
 
-  // --- STEP 1 UI: Type Selection ---
   if (step === 1) {
     return (
       <SafeAreaView  style={styles.container}>
@@ -122,74 +114,46 @@ await addDoc(collection(getFirestore(), 'challenges'), {
     );
   }
 
-  // --- STEP 2 UI: Form (A vs B) ---
+  // --- STEP 2 UI ---
+  const isAvsB = selectedType?.type === 'A_vs_B';
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Text style={{ fontSize: 24, color: '#000' }}>←</Text>
-        </TouchableOpacity>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}><Text style={{ fontSize: 24, color: '#000' }}>←</Text></TouchableOpacity>
         <Text style={styles.headerTitle}>Create {selectedType?.title}</Text>
         <View style={{ width: 24 }} />
       </View>
 
       <View style={styles.formContainer}>
         <Text style={styles.label}>What's your question?</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="e.g., Which outfit looks better?"
-          placeholderTextColor="#666666"
-          value={question}
-          onChangeText={setQuestion}
-        />
-        {/* NAYA: Categories Section */}
+        <TextInput style={styles.input} placeholder="e.g., Which outfit looks better?" placeholderTextColor="#666666" value={question} onChangeText={setQuestion}/>
+        
         <Text style={styles.label}>Category</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
           {CATEGORIES.map((cat) => (
-            <TouchableOpacity 
-              key={cat} 
-              style={[styles.catBadge, selectedCategory === cat && styles.activeCatBadge]}
-              onPress={() => setSelectedCategory(cat)}
-            >
+            <TouchableOpacity key={cat} style={[styles.catBadge, selectedCategory === cat && styles.activeCatBadge]} onPress={() => setSelectedCategory(cat)}>
               <Text style={[styles.catText, selectedCategory === cat && styles.activeCatText]}>{cat}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={styles.label}>Add Photos</Text>
+        <Text style={styles.label}>Add Photo{isAvsB ? 's' : ''}</Text>
         <View style={styles.imageSelectorRow}>
-          
-          {/* Image A Selector */}
-          <TouchableOpacity style={styles.imageBox} onPress={() => pickImage('A')}>
-            {imageA ? (
-              <Image source={{ uri: imageA }} style={styles.previewImage} />
-            ) : (
-              <Text style={styles.addPhotoText}>+ Photo A</Text>
-            )}
+          {/* NAYA: Agar A vs B nahi hai tou 1 photo 100% width par dikhao */}
+          <TouchableOpacity style={[styles.imageBox, !isAvsB && { width: '100%' }]} onPress={() => pickImage('A')}>
+            {imageA ? <Image source={{ uri: imageA }} style={styles.previewImage} /> : <Text style={styles.addPhotoText}>+ Photo {isAvsB ? 'A' : ''}</Text>}
           </TouchableOpacity>
 
-          {/* Image B Selector */}
-          <TouchableOpacity style={styles.imageBox} onPress={() => pickImage('B')}>
-            {imageB ? (
-              <Image source={{ uri: imageB }} style={styles.previewImage} />
-            ) : (
-              <Text style={styles.addPhotoText}>+ Photo B</Text>
-            )}
-          </TouchableOpacity>
-
+          {isAvsB && (
+            <TouchableOpacity style={styles.imageBox} onPress={() => pickImage('B')}>
+              {imageB ? <Image source={{ uri: imageB }} style={styles.previewImage} /> : <Text style={styles.addPhotoText}>+ Photo B</Text>}
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Publish Button */}
-        <TouchableOpacity 
-          style={[styles.publishButton, isPublishing && { backgroundColor: '#a5d6a7' }]} 
-          onPress={handlePublish}
-          disabled={isPublishing}
-        >
-          {isPublishing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.publishButtonText}>Publish</Text>
-          )}
+        <TouchableOpacity style={[styles.publishButton, isPublishing && { backgroundColor: '#a5d6a7' }]} onPress={handlePublish} disabled={isPublishing}>
+          {isPublishing ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishButtonText}>Publish</Text>}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -201,37 +165,24 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   backButton: { marginRight: 15 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#000', flex: 1, textAlign: 'center' },
-  
-  // Step 1 Styles
   questionText: { fontSize: 22, fontWeight: 'bold', color: '#000', margin: 20 },
   typeCard: { flexDirection: 'row', alignItems: 'center', padding: 15, marginHorizontal: 20, marginBottom: 15, backgroundColor: '#f9f9f9', borderRadius: 12, borderWidth: 1, borderColor: '#eee' },
- iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  
-  // NAYA: Custom Icon ka style
-customIcon: { width: 42, height: 42, resizeMode: 'contain' }, 
-  
-  // iconText: { fontSize: 24 }, <-- Isko aap chahein tou mita sakte hain kyunke ab ye use nahi ho raha
-  iconText: { fontSize: 24 },
+  iconCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  customIcon: { width: 38, height: 38, resizeMode: 'contain' }, 
   textContainer: { flex: 1 },
   cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#000', marginBottom: 4 },
   cardDesc: { fontSize: 13, color: '#666' },
-
-  // Step 2 Styles
   formContainer: { padding: 20 },
   label: { fontSize: 16, fontWeight: 'bold', color: '#000', marginBottom: 10, marginTop: 10 },
-  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 15, fontSize: 15, backgroundColor: '#f5f1f1', marginBottom: 20 },
-
+  input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 15, fontSize: 15, backgroundColor: '#f5f1f1', marginBottom: 20, color: '#000' },
   catBadge: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd' },
   activeCatBadge: { backgroundColor: COLORS.primary || '#5A9624', borderColor: COLORS.primary || '#5A9624' },
   catText: { color: '#666', fontWeight: 'bold' },
   activeCatText: { color: '#fff' },
-  
   imageSelectorRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 15, marginBottom: 30 },
   imageBox: { flex: 1, height: 180, backgroundColor: '#f0f0f0', borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
   previewImage: { width: '100%', height: '100%', borderRadius: 10 },
   addPhotoText: { color: '#888', fontWeight: 'bold' },
-  
-
   publishButton: { backgroundColor: COLORS.primary || '#5A9624', padding: 16, borderRadius: 10, alignItems: 'center' },
   publishButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });

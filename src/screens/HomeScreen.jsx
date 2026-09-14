@@ -3,12 +3,14 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList, ActivityIndi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native'
 import { getAuth, signOut } from '@react-native-firebase/auth';
-// NAYA: serverTimestamp import kiya hai
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp,where } from '@react-native-firebase/firestore';
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, where } from '@react-native-firebase/firestore';
 import { COLORS } from '../constant/colors';
 
-const PostCard = ({ item, userVotes, onVote,navigation }) => {
+const PostCard = ({ item, userVotes, onVote, navigation }) => {
+  const isRate = item.type === 'RATE';
   const [creator, setCreator] = useState(null);
+
+  const avgRating = item.totalVotes > 0 && item.ratingSum ? (item.ratingSum / item.totalVotes).toFixed(1) : 0;
 
   useEffect(() => {
     const fetchCreatorDetails = async () => {
@@ -30,50 +32,68 @@ const PostCard = ({ item, userVotes, onVote,navigation }) => {
   const selectedOption = userVotes[item.id]; 
   const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
-  return (
+  // NAYA: Post Type Check
+  const isYesNo = item.type === 'YES_NO';
+
+return (
     <View style={styles.postCard}>
       <View style={styles.userInfo}>
-        <TouchableOpacity 
-        style={styles.userInfo}
-        onPress={() => navigation.navigate('PublicProfile', { userId: item.creatorId })}
-        activeOpacity={0.7}
-      >
-      </TouchableOpacity>
-        <Image source={{ uri: creator?.profilePic || defaultAvatar }} style={styles.avatar} />
-        <View>
-          <Text style={styles.userName}>{creator ? creator.name : 'Loading...'}</Text>
-          {creator?.username && <Text style={styles.usernameHandle}>@{creator.username}</Text>}
-        </View>
+        <TouchableOpacity style={styles.userInfo} onPress={() => navigation.navigate('PublicProfile', { userId: item.creatorId })} activeOpacity={0.7}>
+          <Image source={{ uri: creator?.profilePic || defaultAvatar }} style={styles.avatar} />
+          <View>
+            <Text style={styles.userName}>{creator ? creator.name : 'Loading...'}</Text>
+            {creator?.username && <Text style={styles.usernameHandle}>@{creator.username}</Text>}
+          </View>
+        </TouchableOpacity>
       </View>
       <Text style={styles.question}>{item.question}</Text>
-      <View style={styles.imagesRow}>
-        {/* NAYA: onVote mein ab hum creatorId bhi bhej rahe hain */}
-        <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'A' && styles.selectedBorder]} 
-          onPress={() => !hasVoted && onVote(item.id, 'A', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
-          <Image source={{ uri: item.imageA_URL }} style={styles.postImage} />
-          {hasVoted ? (
-            <View style={styles.resultOverlay}>
-              <Text style={styles.percentText}>{percentA}%</Text>
-              {selectedOption === 'A' && <Text style={styles.yourChoiceText}>Your Choice</Text>}
-            </View>
-          ) : (
-            <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote A</Text></View>
-          )}
-        </TouchableOpacity>
+      
+      {/* DYNAMIC POST DESIGN */}
+      {isYesNo ? (
+        // 1. YES / NO DESIGN
+        <View style={styles.singleImageContainer}>
+          <Image source={{ uri: item.imageA_URL }} style={styles.singleImage} />
+          <View style={styles.yesNoRow}>
+            <TouchableOpacity style={[styles.yesButton, hasVoted && selectedOption === 'A' && styles.selectedYes]} onPress={() => !hasVoted && onVote(item.id, 'A', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
+              <Text style={styles.yesNoText}>{hasVoted ? `👍 Yes (${percentA}%)` : '👍 Yes'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.noButton, hasVoted && selectedOption === 'B' && styles.selectedNo]} onPress={() => !hasVoted && onVote(item.id, 'B', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
+              <Text style={styles.yesNoText}>{hasVoted ? `👎 No (${percentB}%)` : '👎 No'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : isRate ? (
+        // 2. RATE DESIGN (1 Image, 5 Stars)
+        <View style={styles.singleImageContainer}>
+          <Image source={{ uri: item.imageA_URL }} style={styles.singleImage} />
+          <View style={styles.starsRow}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <TouchableOpacity key={star} onPress={() => !hasVoted && onVote(item.id, star, item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
+                <Text style={[styles.starIcon, hasVoted && selectedOption >= star ? styles.starSelected : styles.starUnselected]}>★</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {hasVoted && <Text style={styles.avgText}>Average Rating: {avgRating} ⭐</Text>}
+        </View>
+      ) : (
+        // 3. A vs B DESIGN (2 Images)
+        <View style={styles.imagesRow}>
+          <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'A' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'A', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
+            <Image source={{ uri: item.imageA_URL }} style={styles.postImage} />
+            {hasVoted ? (
+              <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentA}%</Text>{selectedOption === 'A' && <Text style={styles.yourChoiceText}>Your Choice</Text>}</View>
+            ) : <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote A</Text></View>}
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'B' && styles.selectedBorder]} 
-          onPress={() => !hasVoted && onVote(item.id, 'B', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
-          <Image source={{ uri: item.imageB_URL }} style={styles.postImage} />
-          {hasVoted ? (
-            <View style={styles.resultOverlay}>
-              <Text style={styles.percentText}>{percentB}%</Text>
-              {selectedOption === 'B' && <Text style={styles.yourChoiceText}>Your Choice</Text>}
-            </View>
-          ) : (
-            <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote B</Text></View>
-          )}
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'B' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'B', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
+            <Image source={{ uri: item.imageB_URL }} style={styles.postImage} />
+            {hasVoted ? (
+              <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentB}%</Text>{selectedOption === 'B' && <Text style={styles.yourChoiceText}>Your Choice</Text>}</View>
+            ) : <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote B</Text></View>}
+          </TouchableOpacity>
+        </View>
+      )}
+
       <Text style={styles.totalVotesText}>{total} votes</Text>
     </View>
   );
@@ -86,11 +106,9 @@ export default function HomeScreen({ navigation }) {
   const HOME_CATEGORIES = ['All', 'Fashion', 'Food', 'Travel', 'Fun', 'Sports', 'Tech'];
   const [activeCategory, setActiveCategory] = useState('All');
 
- useEffect(() => {
+  useEffect(() => {
     const db = getFirestore();
     let q;
-    
-    // Agar 'All' selected hai tou sab dikhao, warna sirf selected category dikhao
     if (activeCategory === 'All') {
       q = query(collection(db, 'challenges'), orderBy('createdAt', 'desc'));
     } else {
@@ -98,20 +116,23 @@ export default function HomeScreen({ navigation }) {
     }
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      if (!querySnapshot) return; 
       const posts = [];
       querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data() }); });
       setChallenges(posts);
       setLoading(false);
+    }, (error) => {
+      console.log('Firestore Query Error:', error);
+      setLoading(false);
     });
     
     return () => unsubscribe();
-  }, [activeCategory]); // Yahan activeCategory daalna zaroori hai
+  }, [activeCategory]); 
 
   const handleLogout = () => {
     signOut(getAuth()).then(() => console.log('User signed out!'));
   };
 
-  // --- UPDATED VOTE LOGIC (WITH NOTIFICATION) ---
   const handleVote = async (challengeId, option, creatorId) => {
     const currentUser = getAuth().currentUser;
     if (!currentUser) return;
@@ -129,10 +150,16 @@ export default function HomeScreen({ navigation }) {
       }
 
       await setDoc(voteRef, { selectedOption: option, userId: currentUser.uid, votedAt: new Date() });
-      await updateDoc(challengeRef, { [option === 'A' ? 'voteCountA' : 'voteCountB']: increment(1), totalVotes: increment(1) });
+      let updateData = {};
+      if (typeof option === 'number') {
+        updateData = { ratingSum: increment(option), totalVotes: increment(1) };
+      } else {
+        updateData = { [option === 'A' ? 'voteCountA' : 'voteCountB']: increment(1), totalVotes: increment(1) };
+      }
+      
+      await updateDoc(challengeRef, updateData);
       setUserVotes(prev => ({ ...prev, [challengeId]: option }));
 
-      // 🔔 NOTIFICATION BHEJNE KA JADU (Sirf tab bhejo agar apni post na ho)
       if (creatorId && creatorId !== currentUser.uid && creatorId !== 'anonymous') {
         const currentUserSnap = await getDoc(doc(db, 'users', currentUser.uid));
         const currentUserData = currentUserSnap.data();
@@ -175,16 +202,12 @@ export default function HomeScreen({ navigation }) {
           keyExtractor={(item) => item.id} 
           showsVerticalScrollIndicator={false} 
           contentContainerStyle={{ paddingBottom: 20 }}
-          // NAYA: Header jisme Tabs aur Categories hain
           ListHeaderComponent={
             <View style={{ padding: 15 }}>
-              {/* For You / Following Tabs */}
               <View style={{ flexDirection: 'row', gap: 20, marginBottom: 15 }}>
                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: COLORS.primary || '#5A9624', borderBottomWidth: 2, borderBottomColor: COLORS.primary || '#5A9624', paddingBottom: 5 }}>For You</Text>
                 <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#888' }}>Following</Text>
               </View>
-
-              {/* Categories ScrollBar */}
               <FlatList 
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -202,12 +225,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           }
           renderItem={({ item }) => (
-            <PostCard 
-              item={item} 
-              userVotes={userVotes} 
-              onVote={handleVote} 
-              navigation={navigation} // <--- Sirf ek dafa yahan aayega
-            />
+            <PostCard item={item} userVotes={userVotes} onVote={handleVote} navigation={navigation} />
           )}
           ListEmptyComponent={<Text style={styles.emptyText}>No challenges found. Create one!</Text>}
         />
@@ -229,18 +247,37 @@ const styles = StyleSheet.create({
   userName: { fontSize: 16, fontWeight: 'bold', color: '#000' },
   usernameHandle: { fontSize: 13, color: '#888' }, 
   question: { fontSize: 15, color: '#333', marginBottom: 15, fontWeight: '500' },
+  
+  // A vs B Styles
   imagesRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   imageWrapper: { flex: 1, position: 'relative', borderRadius: 12, overflow: 'hidden' }, 
   postImage: { width: '100%', height: 220, backgroundColor: '#e0e0e0' },
   voteButton: { position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
   voteButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  totalVotesText: { textAlign: 'right', marginTop: 10, color: '#666', fontSize: 13, fontWeight: 'bold' },
   resultOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
   percentText: { color: '#fff', fontSize: 32, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 3 },
+  yourChoiceText: { color: '#fff', backgroundColor: COLORS.primary || '#5A9624', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, fontSize: 12, fontWeight: 'bold', marginTop: 10 },
+  selectedBorder: { borderWidth: 3, borderColor: COLORS.primary || '#5A9624' },
+  
+  // NAYA: Yes / No Styles
+  singleImageContainer: { width: '100%' },
+  singleImage: { width: '100%', height: 250, borderRadius: 12, backgroundColor: '#e0e0e0', marginBottom: 15 },
+  yesNoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
+  yesButton: { flex: 1, backgroundColor: '#f0f0f0', paddingVertical: 12, borderRadius: 25, alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  noButton: { flex: 1, backgroundColor: '#f0f0f0', paddingVertical: 12, borderRadius: 25, alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  selectedYes: { backgroundColor: '#e8f5e9', borderColor: '#4CAF50' },
+  selectedNo: { backgroundColor: '#ffebee', borderColor: '#F44336' },
+  yesNoText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
+
+  totalVotesText: { textAlign: 'right', marginTop: 10, color: '#666', fontSize: 13, fontWeight: 'bold' },
   homeCatBadge: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 10 },
   homeActiveCatBadge: { backgroundColor: COLORS.primary || '#5A9624' },
   homeCatText: { color: '#666', fontWeight: 'bold' },
   homeActiveCatText: { color: '#fff' },
-  yourChoiceText: { color: '#fff', backgroundColor: COLORS.primary || '#5A9624', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, fontSize: 12, fontWeight: 'bold', marginTop: 10 },
-  selectedBorder: { borderWidth: 3, borderColor: COLORS.primary || '#5A9624' }
+  // RATE Styles
+  starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 15, marginVertical: 10 },
+  starIcon: { fontSize: 45 },
+  starSelected: { color: '#FFD700' }, // Golden color
+  starUnselected: { color: '#e0e0e0' }, // Grey color
+  avgText: { textAlign: 'center', fontSize: 16, fontWeight: 'bold', color: COLORS.primary || '#5A9624', marginTop: 5 },
 });
