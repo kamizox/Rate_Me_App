@@ -8,7 +8,6 @@ import { COLORS } from '../constant/colors';
 const { width } = Dimensions.get('window');
 
 export default function PublicProfileScreen({ route, navigation }) {
-  // route.params se us user ki ID aayegi jiski DP par humne click kiya hoga
   const { userId } = route.params; 
   
   const [userData, setUserData] = useState(null);
@@ -23,14 +22,12 @@ export default function PublicProfileScreen({ route, navigation }) {
   useEffect(() => {
     if (!userId) return;
 
-    // 1. Us User ki profile ki live detail mangwana
     const unsubscribeUser = onSnapshot(doc(db, 'users', userId), (docSnapshot) => {
       if (docSnapshot.exists()) {
         setUserData(docSnapshot.data());
       }
     });
 
-    // 2. Us User ki apni Posts ki live detail mangwana
     const q = query(collection(db, 'challenges'), where('creatorId', '==', userId));
     const unsubscribePosts = onSnapshot(q, (querySnapshot) => {
       const posts = [];
@@ -42,7 +39,6 @@ export default function PublicProfileScreen({ route, navigation }) {
       setLoading(false);
     });
 
-    // 3. Check karna ke kya Current User is profile ko pehle se follow kar raha hai?
     const checkFollowing = async () => {
       if (!currentUser) return;
       const followingRef = doc(db, `users/${currentUser.uid}/following`, userId);
@@ -57,12 +53,12 @@ export default function PublicProfileScreen({ route, navigation }) {
     };
   }, [userId, currentUser, db]);
 
-  // FOLLOW / UNFOLLOW LOGIC (With Notification)
   const handleFollowToggle = async () => {
     if (!currentUser) return;
-    if (currentUser.uid === userId) return; // Khud ko follow nahi kar sakte
+    if (currentUser.uid === userId) return; 
 
     const followingRef = doc(db, `users/${currentUser.uid}/following`, userId);
+    const followerRef = doc(db, `users/${userId}/followers`, currentUser.uid); // NAYA
     const targetUserRef = doc(db, 'users', userId);
     const currentUserRef = doc(db, 'users', currentUser.uid);
 
@@ -70,17 +66,19 @@ export default function PublicProfileScreen({ route, navigation }) {
       if (isFollowing) {
         // UNFOLLOW
         await deleteDoc(followingRef);
+        await deleteDoc(followerRef); // NAYA
         await updateDoc(currentUserRef, { followingCount: increment(-1) });
         await updateDoc(targetUserRef, { followersCount: increment(-1) });
         setIsFollowing(false);
       } else {
         // FOLLOW
         await setDoc(followingRef, { followedAt: new Date() });
+        await setDoc(followerRef, { followedAt: new Date() }); // NAYA
         await updateDoc(currentUserRef, { followingCount: increment(1) });
         await updateDoc(targetUserRef, { followersCount: increment(1) });
         setIsFollowing(true);
 
-        // NOTIFICATION BHEJNA
+        // NOTIFICATION
         const currentUserSnap = await getDoc(currentUserRef);
         const currentUserData = currentUserSnap.data();
         const notifRef = doc(collection(db, `users/${userId}/notifications`));
@@ -101,11 +99,20 @@ export default function PublicProfileScreen({ route, navigation }) {
     }
   };
 
-  const renderStat = (value, label) => (
-    <View style={styles.statBox}>
+  // NAYA: Clickable Stats Function Yahan Hai
+  const renderStat = (value, label, type) => (
+    <TouchableOpacity 
+      style={styles.statBox} 
+      onPress={() => {
+        if (type === 'followers' || type === 'following') {
+          navigation.navigate('FollowList', { userId: userId, type: type });
+        }
+      }}
+      disabled={type === 'rating'} 
+    >
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderGridPost = ({ item }) => (
@@ -125,13 +132,11 @@ export default function PublicProfileScreen({ route, navigation }) {
     );
   }
 
-  // Agar ghalti se apni hi profile khul jaye tou follow button na dikhao
   const isOwnProfile = currentUser?.uid === userId;
 
   return (
     <SafeAreaView style={styles.container}>
       
-      {/* HEADER WITH BACK BUTTON */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backIcon}>←</Text>
@@ -156,7 +161,6 @@ export default function PublicProfileScreen({ route, navigation }) {
               <Text style={styles.usernameText}>@{userData?.username || 'user'}</Text>
               <Text style={styles.bioText}>{userData?.bio || 'No bio yet.'}</Text>
 
-              {/* FOLLOW BUTTON (Sirf tab jab dusre ki profile ho) */}
               {!isOwnProfile && (
                 <TouchableOpacity 
                   style={[styles.followButton, isFollowing && styles.followingButton]} 
@@ -169,10 +173,11 @@ export default function PublicProfileScreen({ route, navigation }) {
               )}
             </View>
 
+            {/* NAYA: Stats Container Jisme 3no Stats Call Ho Rahe Hain */}
             <View style={styles.statsContainer}>
-              {renderStat(userData?.followersCount || 0, 'Followers')}
-              {renderStat(userData?.followingCount || 0, 'Following')}
-              {renderStat(userData?.avgRating || 0, 'Avg Rating')}
+              {renderStat(userData?.followersCount || 0, 'Followers', 'followers')}
+              {renderStat(userData?.followingCount || 0, 'Following', 'following')}
+              {renderStat(userData?.avgRating || 0, 'Avg Rating', 'rating')}
             </View>
 
             <View style={styles.divider} />

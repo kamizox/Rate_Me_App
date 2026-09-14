@@ -12,10 +12,9 @@ import {
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { uploadImageToCloudinary } from '../../services/cloudinaryService';
-
 // Firebase Auth & Firestore imports
 import { getAuth, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from '@react-native-firebase/auth';
-import { getFirestore, doc, setDoc, serverTimestamp } from '@react-native-firebase/firestore'; // NAYA: Firestore import kiya
+import { getFirestore, doc, setDoc, serverTimestamp ,collection, query, where, getDocs} from '@react-native-firebase/firestore'; // NAYA: Firestore import kiya
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const SignupScreen = ({navigation}) => {
@@ -42,32 +41,45 @@ const SignupScreen = ({navigation}) => {
     }
   };
 const handleSignup = async () => {
-    // Validation mein name aur username bhi add kar diye
     if (!email || !password || !fullName || !username) {
       Alert.alert('Error', 'Please fill all fields');
       return;
     }
     
-    setIsSigningUp(true); // NAYA: Button loading shuru
+    setIsSigningUp(true); 
 
     try {
-      // Step A: Firebase Auth mein user create karna
+      const db = getFirestore();
+      const formattedUsername = username.toLowerCase().replace(/\s+/g, ''); // Spaces hata kar small letters
+
+      // NAYA LOGIC: Pehle check karo ke kya yeh username pehle se exist karta hai?
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('username', '==', formattedUsername));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        // Agar record mil gaya, tou iska matlab username pehle se kisi ne liya hua hai
+        Alert.alert('Username Taken', 'Yeh username pehle se kisi ne liya hua hai. Barae meharbani koi aur try karein!');
+        setIsSigningUp(false);
+        return; // Yahan se code aage nahi jayega
+      }
+
+      // Step A: Agar username unique hai, tou Firebase Auth mein user create karna
       const userCredential = await createUserWithEmailAndPassword(getAuth(), email, password);
       const uid = userCredential.user.uid;
 
-      // NAYA: Agar user ne gallery se pic select ki hai tou pehle Cloudinary par upload karein
+      // Cloudinary par profile pic upload karna
       let uploadedPicUrl = null;
       if (profilePicUri) {
         uploadedPicUrl = await uploadImageToCloudinary(profilePicUri);
       }
 
-      // Step B: Firestore ke 'users' collection mein profile document banana
-      const db = getFirestore();
+      // Step B: Firestore ke 'users' collection mein profile save karna
       await setDoc(doc(db, 'users', uid), {
         name: fullName,
-        username: username.toLowerCase().replace(/\s+/g, ''), // Spaces hata kar lower case
+        username: formattedUsername,
         email: email,
-        profilePic: uploadedPicUrl, // NAYA: Upload hui pic ka URL yahan save hoga
+        profilePic: uploadedPicUrl, 
         bio: '',
         followersCount: 0,
         followingCount: 0,
@@ -76,8 +88,6 @@ const handleSignup = async () => {
       });
 
       Alert.alert('Success', 'Account created successfully!');
-      
-      // Account banne ke baad Login screen par bhej dein
       // navigation.navigate('Login'); 
       
     } catch (error) {
@@ -89,7 +99,7 @@ const handleSignup = async () => {
         Alert.alert('Error', error.message);
       }
     } finally {
-      setIsSigningUp(false); // NAYA: Loading band kar do, chahe success ho ya error
+      setIsSigningUp(false); 
     }
   };
   // 2. UPDATED: Google Login / Signup Logic (Auth + Firestore)

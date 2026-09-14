@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,7 +9,7 @@ import {
   Image,
   Alert
 } from 'react-native';
-import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from '@react-native-firebase/auth';
+import { getAuth, signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential, sendPasswordResetEmail } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const LoginScreen = ({ navigation }) => {
@@ -18,6 +18,7 @@ const LoginScreen = ({ navigation }) => {
       webClientId: '807058046291-ngttgnpce87anmnsrih9um8o817bb968.apps.googleusercontent.com',
     });
   }, []);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [secureText, setSecureText] = useState(true);
@@ -34,6 +35,26 @@ const LoginScreen = ({ navigation }) => {
       // navigation.navigate('Home'); // Baad mein Home screen par bhejenge
     } catch (error) {
       Alert.alert('Error', error.message);
+    }
+  };
+
+  // Forgot Password Logic
+  const handleForgotPassword = async () => {
+    // Check karega ke email field mein email likhi hai ya nahi
+    if (!email) {
+      Alert.alert('Email Required', 'Password reset karne ke liye pehle upar apna Email address likhein.');
+      return;
+    }
+    
+    try {
+      await sendPasswordResetEmail(getAuth(), email);
+      Alert.alert('Email Sent!', 'Password reset karne ka link aapke email par bhej diya gaya hai. Apna inbox check karein.');
+    } catch (error) {
+      if (error.code === 'auth/user-not-found') {
+        Alert.alert('Error', 'Is email se koi account nahi mila.');
+      } else {
+        Alert.alert('Error', error.message);
+      }
     }
   };
 
@@ -96,8 +117,8 @@ const LoginScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Forgot Password Link */}
-      <TouchableOpacity style={styles.forgotContainer}>
+      {/* Forgot Password Link - YAHAN THEEK KIYA HAI */}
+      <TouchableOpacity style={styles.forgotContainer} onPress={handleForgotPassword}>
         <Text style={styles.forgotText}>Forgot Password?</Text>
       </TouchableOpacity>
 
@@ -118,18 +139,19 @@ const LoginScreen = ({ navigation }) => {
             style={styles.googleIconSt}
           />
         </TouchableOpacity>
+        {/* Apple Button */}
         <TouchableOpacity style={styles.socialButton}>
           <Image
-                      source={require('../../assets/icons/apple-logo.png')}
-                      style= {styles.appleIconst}
-                    />
+            source={require('../../assets/icons/apple-logo.png')}
+            style= {styles.appleIconst}
+          />
         </TouchableOpacity>
       </View>
 
       {/* Footer / Sign Up Link */}
       <View style={styles.footer}>
         <Text style={styles.footerText}>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
           <Text style={styles.signUpLink}>Sign Up</Text>
         </TouchableOpacity>
       </View>

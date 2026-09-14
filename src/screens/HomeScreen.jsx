@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList, ActivityIndicator, Alert,TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList, ActivityIndicator, Alert, TextInput, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native'
 import { getAuth, signOut } from '@react-native-firebase/auth';
-import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, where } from '@react-native-firebase/firestore';
+import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, increment, serverTimestamp, where, deleteDoc } from '@react-native-firebase/firestore';
 import { COLORS } from '../constant/colors';
 
 const PostCard = ({ item, userVotes, onVote, navigation }) => {
   const [creator, setCreator] = useState(null);
   const [guessInput, setGuessInput] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
   
+  const currentUser = getAuth().currentUser;
+  const isOwner = currentUser?.uid === item.creatorId;
+
   // POST TYPES
   const isYesNo = item.type === 'YES_NO';
   const isRate = item.type === 'RATE';
@@ -19,15 +22,113 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
   const avgRating = item.totalVotes > 0 && item.ratingSum ? (item.ratingSum / item.totalVotes).toFixed(1) : 0;
 
   useEffect(() => {
+    const db = getFirestore();
+    
+    // Creator ki details mangwana
     const fetchCreatorDetails = async () => {
       if (item.creatorId && item.creatorId !== 'anonymous') {
-        const db = getFirestore();
         const userDoc = await getDoc(doc(db, 'users', item.creatorId));
         if (userDoc.exists()) setCreator(userDoc.data());
       }
     };
+    
+    // Check karna ke current user ne yeh post save ki hui hai ya nahi
+    const checkSavedStatus = async () => {
+      if (!currentUser) return;
+      const savedRef = doc(db, `users/${currentUser.uid}/savedChallenges`, item.id);
+      const savedSnap = await getDoc(savedRef);
+      setIsSaved(savedSnap.exists());
+    };
+
     fetchCreatorDetails();
-  }, [item.creatorId]);
+    checkSavedStatus();
+  }, [item.creatorId, currentUser, item.id]);
+
+  // Delete Logic
+  const handleDelete = () => {
+    Alert.alert(
+      "Delete Challenge",
+      "Kiya aap waqai is challenge ko hamesha ke liye delete karna chahte hain?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: async () => {
+            try {
+              const db = getFirestore();
+              await deleteDoc(doc(db, 'challenges', item.id));
+              Alert.alert("Deleted", "Aapka challenge delete ho gaya hai.");
+            } catch (error) {
+              console.log("Delete error:", error);
+              Alert.alert("Error", "Challenge delete nahi ho saka.");
+            }
+        }}
+      ]
+    );
+  };
+
+  // Report Logic
+  const handleReport = () => {
+    Alert.alert(
+      "Report Post",
+      "Kiya aapko lagta hai ke yeh post rules ke khilaf ya inappropriate hai?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Report", style: "destructive", onPress: async () => {
+            try {
+              const db = getFirestore();
+              await setDoc(doc(db, 'reports', `${currentUser.uid}_${item.id}`), {
+                challengeId: item.id,
+                reportedBy: currentUser.uid,
+                creatorId: item.creatorId,
+                createdAt: serverTimestamp(),
+                status: 'pending' 
+              });
+              Alert.alert("Reported", "Shukriya! Hamari team is post ko review karegi.");
+            } catch (error) {
+              console.log("Report error:", error);
+              Alert.alert("Error", "Report submit nahi ho saki.");
+            }
+        }}
+      ]
+    );
+  };
+
+  // Social Sharing Logic
+  const handleShare = async () => {
+    try {
+      const shareUrl = `https://ratemeapp.com/challenge/${item.id}`; 
+      const message = `Check out this challenge on RateMe: "${item.question}"\n\nVote now: ${shareUrl}`;
+
+      const result = await Share.share({
+        message: message,
+      });
+
+      if (result.action === Share.sharedAction) {
+        console.log("Shared successfully!");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Share karne mein masla aagaya.");
+      console.log(error.message);
+    }
+  };
+
+  // Save / Unsave Logic
+  const handleSave = async () => {
+    if (!currentUser) return;
+    const db = getFirestore();
+    const savedRef = doc(db, `users/${currentUser.uid}/savedChallenges`, item.id);
+
+    try {
+      if (isSaved) {
+        await deleteDoc(savedRef);
+        setIsSaved(false);
+      } else {
+        await setDoc(savedRef, { savedAt: serverTimestamp(), challengeId: item.id });
+        setIsSaved(true);
+      }
+    } catch (error) {
+      console.log("Save error:", error);
+    }
+  };
 
   const total = item.totalVotes || 0;
   const countA = item.voteCountA || 0;
@@ -49,6 +150,7 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
           </View>
         </TouchableOpacity>
       </View>
+      
       <Text style={styles.question}>{item.question}</Text>
       
       {/* DYNAMIC POST DESIGN */}
@@ -56,26 +158,15 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
         <View style={styles.pollWrapper}>
           {['A', 'B', 'C', 'D'].map((opt) => {
             if (!item.pollOptions || !item.pollOptions[opt]) return null;
-            
             const optCount = item[`voteCount${opt}`] || 0;
             const optPercent = total > 0 ? Math.round((optCount / total) * 100) : 0;
             const isSelected = selectedOption === opt;
 
             return (
-              <TouchableOpacity 
-                key={opt} 
-                style={[styles.pollOptionBtn, hasVoted && isSelected && styles.pollSelectedBtn]}
-                onPress={() => !hasVoted && onVote(item.id, opt, item.creatorId)}
-                activeOpacity={hasVoted ? 1 : 0.7}
-              >
-                {hasVoted && (
-                  <View style={[styles.pollProgressBar, { width: `${optPercent}%` }]} />
-                )}
-                
+              <TouchableOpacity key={opt} style={[styles.pollOptionBtn, hasVoted && isSelected && styles.pollSelectedBtn]} onPress={() => !hasVoted && onVote(item.id, opt, item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
+                {hasVoted && <View style={[styles.pollProgressBar, { width: `${optPercent}%` }]} />}
                 <View style={styles.pollTextContent}>
-                  <Text style={[styles.pollOptText, hasVoted && isSelected && {fontWeight: 'bold', color: COLORS.primary || '#5A9624'}]}>
-                    {item.pollOptions[opt]}
-                  </Text>
+                  <Text style={[styles.pollOptText, hasVoted && isSelected && {fontWeight: 'bold', color: COLORS.primary || '#5A9624'}]}>{item.pollOptions[opt]}</Text>
                   {hasVoted && <Text style={styles.pollPercentVal}>{optPercent}%</Text>}
                 </View>
               </TouchableOpacity>
@@ -83,10 +174,8 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
           })}
         </View>
       ) : isGuess ? (
-        // YEH WALA HISSA MISSING THA (GUESS DESIGN)
         <View style={styles.singleImageContainer}>
           <Image source={{ uri: item.imageA_URL }} style={styles.singleImage} />
-          
           {hasVoted ? (
             <View style={styles.guessResultBox}>
               <Text style={styles.guessUserText}>Your Guess: <Text style={{fontWeight: 'bold'}}>{selectedOption}</Text></Text>
@@ -94,20 +183,8 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
             </View>
           ) : (
             <View style={styles.guessInputRow}>
-              <TextInput
-                style={styles.guessInputField}
-                placeholder="Type your guess here..."
-                placeholderTextColor="#999"
-                value={guessInput}
-                onChangeText={setGuessInput}
-              />
-              <TouchableOpacity 
-                style={styles.guessSubmitBtn} 
-                onPress={() => {
-                  if(!guessInput) return;
-                  onVote(item.id, guessInput.trim().toLowerCase(), item.creatorId);
-                }}
-              >
+              <TextInput style={styles.guessInputField} placeholder="Type your guess here..." placeholderTextColor="#999" value={guessInput} onChangeText={setGuessInput} />
+              <TouchableOpacity style={styles.guessSubmitBtn} onPress={() => { if(!guessInput) return; onVote(item.id, guessInput.trim().toLowerCase(), item.creatorId); }}>
                 <Text style={styles.guessSubmitText}>Submit</Text>
               </TouchableOpacity>
             </View>
@@ -141,21 +218,39 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
         <View style={styles.imagesRow}>
           <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'A' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'A', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
             <Image source={{ uri: item.imageA_URL }} style={styles.postImage} />
-            {hasVoted ? (
-              <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentA}%</Text>{selectedOption === 'A' && <Text style={styles.yourChoiceText}>Your Choice</Text>}</View>
-            ) : <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote A</Text></View>}
+            {hasVoted ? <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentA}%</Text>{selectedOption === 'A' && <Text style={styles.yourChoiceText}>Your Choice</Text>}</View> : <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote A</Text></View>}
           </TouchableOpacity>
-
           <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'B' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'B', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
             <Image source={{ uri: item.imageB_URL }} style={styles.postImage} />
-            {hasVoted ? (
-              <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentB}%</Text>{selectedOption === 'B' && <Text style={styles.yourChoiceText}>Your Choice</Text>}</View>
-            ) : <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote B</Text></View>}
+            {hasVoted ? <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentB}%</Text>{selectedOption === 'B' && <Text style={styles.yourChoiceText}>Your Choice</Text>}</View> : <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote B</Text></View>}
           </TouchableOpacity>
         </View>
       )}
 
-      <Text style={styles.totalVotesText}>{total} votes</Text>
+      {/* Footer Actions */}
+      <View style={styles.postFooter}>
+        <Text style={styles.totalVotesText}>{total} votes</Text>
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
+            <Text style={styles.actionBtnText}>🔗 Share</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={handleSave}>
+            <Text style={[styles.actionBtnText, isSaved && {color: COLORS.primary || '#5A9624'}]}>
+              {isSaved ? '🔖 Saved' : '🔖 Save'}
+            </Text>
+          </TouchableOpacity>
+          {isOwner ? (
+            <TouchableOpacity style={styles.actionBtn} onPress={handleDelete}>
+              <Text style={[styles.actionBtnText, {color: '#FF3B30'}]}>🗑️ Delete</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.actionBtn} onPress={handleReport}>
+              <Text style={[styles.actionBtnText, {color: '#FF9800'}]}>🚩 Report</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
     </View>
   );
 };
@@ -170,26 +265,63 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => {
     const db = getFirestore();
-    let q;
-    if (activeCategory === 'All') {
-      q = query(collection(db, 'challenges'), orderBy('createdAt', 'desc'));
-    } else {
-      q = query(collection(db, 'challenges'), where('category', '==', activeCategory), orderBy('createdAt', 'desc'));
-    }
+    const currentUser = getAuth().currentUser;
+    let unsubscribePosts = () => {};
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      if (!querySnapshot) return; 
-      const posts = [];
-      querySnapshot.forEach((doc) => { posts.push({ id: doc.id, ...doc.data() }); });
-      setChallenges(posts);
-      setLoading(false);
-    }, (error) => {
-      console.log('Firestore Query Error:', error);
-      setLoading(false);
-    });
-    
-    return () => unsubscribe();
-  }, [activeCategory]); 
+    const fetchPosts = async () => {
+      setLoading(true);
+      let followingIds = [];
+
+      if (activeFeed === 'Following' && currentUser) {
+        try {
+          const followingSnap = await getDocs(collection(db, `users/${currentUser.uid}/following`));
+          followingIds = followingSnap.docs.map(doc => doc.id);
+          
+          if (followingIds.length === 0) {
+            setChallenges([]);
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.log("Error fetching following IDs:", error);
+        }
+      }
+
+      let q;
+      if (activeCategory === 'All') {
+        q = query(collection(db, 'challenges'), orderBy('createdAt', 'desc'));
+      } else {
+        q = query(collection(db, 'challenges'), where('category', '==', activeCategory), orderBy('createdAt', 'desc'));
+      }
+
+      unsubscribePosts = onSnapshot(q, (querySnapshot) => {
+        if (!querySnapshot) return; 
+        const posts = [];
+        
+        querySnapshot.forEach((doc) => { 
+          const postData = { id: doc.id, ...doc.data() };
+          
+          if (activeFeed === 'Following') {
+            if (followingIds.includes(postData.creatorId)) {
+              posts.push(postData);
+            }
+          } else {
+            posts.push(postData);
+          }
+        });
+        
+        setChallenges(posts);
+        setLoading(false);
+      }, (error) => {
+        console.log('Firestore Query Error:', error);
+        setLoading(false);
+      });
+    };
+
+    fetchPosts();
+
+    return () => unsubscribePosts();
+  }, [activeCategory, activeFeed]); 
 
   const handleLogout = () => {
     signOut(getAuth()).then(() => console.log('User signed out!'));
@@ -203,6 +335,9 @@ export default function HomeScreen({ navigation }) {
     const voteRef = doc(db, 'challenges', challengeId, 'votes', currentUser.uid);
     const challengeRef = doc(db, 'challenges', challengeId);
 
+    // NAYA LOGIC: Yahan hum post ka data state (challenges array) se dhoond rahe hain
+    const postItem = challenges.find(c => c.id === challengeId);
+
     try {
       const voteDoc = await getDoc(voteRef);
       if (voteDoc.exists()) {
@@ -214,12 +349,11 @@ export default function HomeScreen({ navigation }) {
       await setDoc(voteRef, { selectedOption: option, userId: currentUser.uid, votedAt: new Date() });
       
       let updateData = {};
-      if (typeof option === 'number') { // Rate
+      if (typeof option === 'number') { 
         updateData = { ratingSum: increment(option), totalVotes: increment(1) };
-      } else if (['A', 'B', 'C', 'D'].includes(option)) { // A vs B, Yes/No, Poll
+      } else if (['A', 'B', 'C', 'D'].includes(option)) { 
         updateData = { [`voteCount${option}`]: increment(1), totalVotes: increment(1) };
       } else {
-        // NAYA: GUESS ke liye (Sirf total votes barhao)
         updateData = { totalVotes: increment(1) };
       }
       
@@ -242,6 +376,21 @@ export default function HomeScreen({ navigation }) {
           createdAt: serverTimestamp()
         });
       }
+
+      // NAYA LOGIC: Result Screen ke liye manually percentage nikalna
+      let newTotal = (postItem?.totalVotes || 0) + 1;
+      let newCountA = (postItem?.voteCountA || 0) + (option === 'A' ? 1 : 0);
+      let newCountB = (postItem?.voteCountB || 0) + (option === 'B' ? 1 : 0);
+      let pA = Math.round((newCountA / newTotal) * 100);
+      let pB = Math.round((newCountB / newTotal) * 100);
+
+      navigation.navigate('ResultScreen', {
+        challenge: { id: challengeId, type: postItem?.type, question: postItem?.question, pollOptions: postItem?.pollOptions, ...updateData }, 
+        selectedOption: option,
+        totalVotes: newTotal,
+        percentA: pA, 
+        percentB: pB
+      });
 
     } catch (error) {
       console.log('Voting Error:', error);
@@ -270,8 +419,6 @@ export default function HomeScreen({ navigation }) {
           contentContainerStyle={{ paddingBottom: 20 }}
           ListHeaderComponent={
             <View style={{ padding: 15 }}>
-              
-              {/* NAYA: For You / Following Tabs Clickable ho gaye */}
               <View style={{ flexDirection: 'row', gap: 20, marginBottom: 15 }}>
                 <TouchableOpacity onPress={() => setActiveFeed('For You')}>
                   <Text style={{ 
@@ -339,8 +486,13 @@ const styles = StyleSheet.create({
   userName: { fontSize: 16, fontWeight: 'bold', color: '#000' },
   usernameHandle: { fontSize: 13, color: '#888' }, 
   question: { fontSize: 15, color: '#333', marginBottom: 15, fontWeight: '500' },
+
+  postFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10 },
+  totalVotesText: { color: '#666', fontSize: 13, fontWeight: 'bold' },
+  actionButtonsContainer: { flexDirection: 'row', gap: 15 },
+  actionBtn: { paddingVertical: 5, paddingHorizontal: 10, backgroundColor: '#f9f9f9', borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
+  actionBtnText: { fontSize: 13, fontWeight: 'bold', color: '#555' },
   
-  // A vs B Styles
   imagesRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   imageWrapper: { flex: 1, position: 'relative', borderRadius: 12, overflow: 'hidden' }, 
   postImage: { width: '100%', height: 220, backgroundColor: '#e0e0e0' },
@@ -351,7 +503,6 @@ const styles = StyleSheet.create({
   yourChoiceText: { color: '#fff', backgroundColor: COLORS.primary || '#5A9624', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, fontSize: 12, fontWeight: 'bold', marginTop: 10 },
   selectedBorder: { borderWidth: 3, borderColor: COLORS.primary || '#5A9624' },
   
-  // Yes / No Styles
   singleImageContainer: { width: '100%' },
   singleImage: { width: '100%', height: 250, borderRadius: 12, backgroundColor: '#e0e0e0', marginBottom: 15 },
   yesNoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
@@ -361,20 +512,17 @@ const styles = StyleSheet.create({
   selectedNo: { backgroundColor: '#ffebee', borderColor: '#F44336' },
   yesNoText: { fontSize: 16, fontWeight: 'bold', color: '#333' },
 
-  totalVotesText: { textAlign: 'right', marginTop: 10, color: '#666', fontSize: 13, fontWeight: 'bold' },
   homeCatBadge: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 10 },
   homeActiveCatBadge: { backgroundColor: COLORS.primary || '#5A9624' },
   homeCatText: { color: '#666', fontWeight: 'bold' },
   homeActiveCatText: { color: '#fff' },
   
-  // RATE Styles
   starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 15, marginVertical: 10 },
   starIcon: { fontSize: 45 },
   starSelected: { color: '#FFD700' }, 
   starUnselected: { color: '#e0e0e0' }, 
   avgText: { textAlign: 'center', fontSize: 16, fontWeight: 'bold', color: COLORS.primary || '#5A9624', marginTop: 5 },
 
-  // NAYA: POLL Styles
   pollWrapper: { marginTop: 5, gap: 10 },
   pollOptionBtn: { width: '100%', height: 45, backgroundColor: '#f5f5f5', borderRadius: 8, justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
   pollSelectedBtn: { borderColor: COLORS.primary || '#5A9624', borderWidth: 1.5 },
@@ -383,7 +531,6 @@ const styles = StyleSheet.create({
   pollOptText: { fontSize: 15, color: '#333' },
   pollPercentVal: { fontSize: 14, fontWeight: 'bold', color: '#555' },
 
-  // NAYA: GUESS Styles
   guessInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 5 },
   guessInputField: { flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 25, paddingHorizontal: 15, height: 45, backgroundColor: '#f9f9f9', color: '#000' },
   guessSubmitBtn: { backgroundColor: COLORS.primary || '#5A9624', paddingHorizontal: 20, height: 45, borderRadius: 25, justifyContent: 'center' },
