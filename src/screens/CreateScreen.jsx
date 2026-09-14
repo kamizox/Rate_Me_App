@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput, Image, ActivityIndicator, Alert  } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { uploadImageToCloudinary } from '../services/cloudinaryService'; 
@@ -18,12 +18,24 @@ const CHALLENGE_TYPES = [
 export default function CreateScreen({ navigation }) {
   const [step, setStep] = useState(1);
   const [selectedType, setSelectedType] = useState(null);
+  const [guessAnswer, setGuessAnswer] = useState('');
+  
+  // General States
   const [question, setQuestion] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Fashion'); 
+  const CATEGORIES = ['Fashion', 'Food', 'Travel', 'Fun', 'Sports', 'Tech'];
+  
+  // Image States (For A vs B, Yes/No, Rate)
   const [imageA, setImageA] = useState(null);
   const [imageB, setImageB] = useState(null);
+  
+  // NAYA: Poll States (4 Options)
+  const [pollOptA, setPollOptA] = useState('');
+  const [pollOptB, setPollOptB] = useState('');
+  const [pollOptC, setPollOptC] = useState('');
+  const [pollOptD, setPollOptD] = useState('');
+
   const [isPublishing, setIsPublishing] = useState(false);
-  const CATEGORIES = ['Fashion', 'Food', 'Travel', 'Fun', 'Sports', 'Tech'];
-  const [selectedCategory, setSelectedCategory] = useState('Fashion'); 
 
   const handleSelectType = (item) => {
     setSelectedType(item);
@@ -44,19 +56,37 @@ export default function CreateScreen({ navigation }) {
   };
 
   const handlePublish = async () => {
-    // NAYA: Type ke hisaab se validation
     const isAvsB = selectedType.type === 'A_vs_B';
+    const isPoll = selectedType.type === 'POLL';
+    const isGuess = selectedType.type === 'GUESS';
     
-    if (!question || !imageA || (isAvsB && !imageB)) {
-      Alert.alert('Incomplete', 'Please add a question and required photos.');
-      return;
+    if (isPoll) {
+      if (!question || !pollOptA || !pollOptB) {
+        Alert.alert('Incomplete', 'Question aur kam az kam 2 options dena zaroori hain.');
+        return;
+      }
+    } else if (isGuess) { // NAYA: Guess Validation
+      if (!question || !imageA || !guessAnswer) {
+        Alert.alert('Incomplete', 'Question, Ek tasveer aur Correct Answer dena zaroori hai.');
+        return;
+      }
+    } else {
+      if (!question || !imageA || (isAvsB && !imageB)) {
+        Alert.alert('Incomplete', 'Please add a question and required photos.');
+        return;
+      }
     }
 
     setIsPublishing(true);
     try {
-      const urlA = await uploadImageToCloudinary(imageA);
-      // Agar type A vs B nahi hai tou doosri pic null jayegi
-      const urlB = isAvsB ? await uploadImageToCloudinary(imageB) : null;
+      let urlA = null;
+      let urlB = null;
+      
+      if (!isPoll) {
+        urlA = await uploadImageToCloudinary(imageA);
+        urlB = isAvsB ? await uploadImageToCloudinary(imageB) : null;
+      }
+      
       const currentUser = getAuth().currentUser;
 
       await addDoc(collection(getFirestore(), 'challenges'), {
@@ -65,17 +95,18 @@ export default function CreateScreen({ navigation }) {
         category: selectedCategory,
         imageA_URL: urlA,
         imageB_URL: urlB,
+        pollOptions: isPoll ? { A: pollOptA, B: pollOptB, C: pollOptC || null, D: pollOptD || null } : null,
+        correctAnswer: isGuess ? guessAnswer.trim().toLowerCase() : null, // NAYA: Asal jawab save hoga
         creatorId: currentUser ? currentUser.uid : 'anonymous',
         createdAt: serverTimestamp(),
-        voteCountA: 0,
-        voteCountB: 0,
-        totalVotes: 0,
+        voteCountA: 0, voteCountB: 0, voteCountC: 0, voteCountD: 0, totalVotes: 0,
       });
 
       Alert.alert('Success', 'Challenge Published successfully!');
-      setQuestion('');
-      setImageA(null);
-      setImageB(null);
+      
+      setQuestion(''); setImageA(null); setImageB(null);
+      setPollOptA(''); setPollOptB(''); setPollOptC(''); setPollOptD('');
+      setGuessAnswer(''); // NAYA
       setStep(1);
       navigation.navigate('Home');
 
@@ -116,6 +147,8 @@ export default function CreateScreen({ navigation }) {
 
   // --- STEP 2 UI ---
   const isAvsB = selectedType?.type === 'A_vs_B';
+  const isPoll = selectedType?.type === 'POLL';
+  const isGuess = selectedType?.type === 'GUESS';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -138,19 +171,41 @@ export default function CreateScreen({ navigation }) {
           ))}
         </View>
 
-        <Text style={styles.label}>Add Photo{isAvsB ? 's' : ''}</Text>
-        <View style={styles.imageSelectorRow}>
-          {/* NAYA: Agar A vs B nahi hai tou 1 photo 100% width par dikhao */}
-          <TouchableOpacity style={[styles.imageBox, !isAvsB && { width: '100%' }]} onPress={() => pickImage('A')}>
-            {imageA ? <Image source={{ uri: imageA }} style={styles.previewImage} /> : <Text style={styles.addPhotoText}>+ Photo {isAvsB ? 'A' : ''}</Text>}
-          </TouchableOpacity>
+        {/* NAYA: Agar Poll hai tou Text Options dikhao, warna Photos */}
+        {isPoll ? (
+          <View>
+             <Text style={styles.label}>Options (Minimum 2)</Text>
+             <TextInput style={styles.pollInput} placeholder="Option 1" placeholderTextColor="#999" value={pollOptA} onChangeText={setPollOptA} />
+             <TextInput style={styles.pollInput} placeholder="Option 2" placeholderTextColor="#999" value={pollOptB} onChangeText={setPollOptB} />
+             <TextInput style={styles.pollInput} placeholder="Option 3 (Optional)" placeholderTextColor="#999" value={pollOptC} onChangeText={setPollOptC} />
+             <TextInput style={styles.pollInput} placeholder="Option 4 (Optional)" placeholderTextColor="#999" value={pollOptD} onChangeText={setPollOptD} />
+          </View>
+        ) : isGuess ? (
+          <View>
+             <Text style={styles.label}>What is the Correct Answer?</Text>
+             <TextInput style={styles.pollInput} placeholder="e.g., A Cat, John Doe, etc." placeholderTextColor="#999" value={guessAnswer} onChangeText={setGuessAnswer} />
+             
+             <Text style={styles.label}>Add Photo to Guess</Text>
+             <TouchableOpacity style={[styles.imageBox, { width: '100%' }]} onPress={() => pickImage('A')}>
+                {imageA ? <Image source={{ uri: imageA }} style={styles.previewImage} /> : <Text style={styles.addPhotoText}>+ Photo</Text>}
+              </TouchableOpacity>
+          </View>
+        ) : (
+          <View>
+            <Text style={styles.label}>Add Photo{isAvsB ? 's' : ''}</Text>
+            <View style={styles.imageSelectorRow}>
+              <TouchableOpacity style={[styles.imageBox, !isAvsB && { width: '100%' }]} onPress={() => pickImage('A')}>
+                {imageA ? <Image source={{ uri: imageA }} style={styles.previewImage} /> : <Text style={styles.addPhotoText}>+ Photo {isAvsB ? 'A' : ''}</Text>}
+              </TouchableOpacity>
 
-          {isAvsB && (
-            <TouchableOpacity style={styles.imageBox} onPress={() => pickImage('B')}>
-              {imageB ? <Image source={{ uri: imageB }} style={styles.previewImage} /> : <Text style={styles.addPhotoText}>+ Photo B</Text>}
-            </TouchableOpacity>
-          )}
-        </View>
+              {isAvsB && (
+                <TouchableOpacity style={styles.imageBox} onPress={() => pickImage('B')}>
+                  {imageB ? <Image source={{ uri: imageB }} style={styles.previewImage} /> : <Text style={styles.addPhotoText}>+ Photo B</Text>}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
 
         <TouchableOpacity style={[styles.publishButton, isPublishing && { backgroundColor: '#a5d6a7' }]} onPress={handlePublish} disabled={isPublishing}>
           {isPublishing ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishButtonText}>Publish</Text>}
@@ -175,6 +230,10 @@ const styles = StyleSheet.create({
   formContainer: { padding: 20 },
   label: { fontSize: 16, fontWeight: 'bold', color: '#000', marginBottom: 10, marginTop: 10 },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 15, fontSize: 15, backgroundColor: '#f5f1f1', marginBottom: 20, color: '#000' },
+  
+  // NAYA: Poll Input style
+  pollInput: { borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8, padding: 12, fontSize: 15, backgroundColor: '#fff', marginBottom: 10, color: '#000' },
+  
   catBadge: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd' },
   activeCatBadge: { backgroundColor: COLORS.primary || '#5A9624', borderColor: COLORS.primary || '#5A9624' },
   catText: { color: '#666', fontWeight: 'bold' },
@@ -183,6 +242,6 @@ const styles = StyleSheet.create({
   imageBox: { flex: 1, height: 180, backgroundColor: '#f0f0f0', borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
   previewImage: { width: '100%', height: '100%', borderRadius: 10 },
   addPhotoText: { color: '#888', fontWeight: 'bold' },
-  publishButton: { backgroundColor: COLORS.primary || '#5A9624', padding: 16, borderRadius: 10, alignItems: 'center' },
+  publishButton: { backgroundColor: COLORS.primary || '#5A9624', padding: 16, borderRadius: 10, alignItems: 'center', marginTop: 10 },
   publishButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });

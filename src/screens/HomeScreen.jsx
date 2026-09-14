@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList, ActivityIndicator, Alert,TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native'
 import { getAuth, signOut } from '@react-native-firebase/auth';
@@ -7,8 +7,14 @@ import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, setD
 import { COLORS } from '../constant/colors';
 
 const PostCard = ({ item, userVotes, onVote, navigation }) => {
-  const isRate = item.type === 'RATE';
   const [creator, setCreator] = useState(null);
+  const [guessInput, setGuessInput] = useState('');
+  
+  // POST TYPES
+  const isYesNo = item.type === 'YES_NO';
+  const isRate = item.type === 'RATE';
+  const isPoll = item.type === 'POLL';
+  const isGuess = item.type === 'GUESS'; 
 
   const avgRating = item.totalVotes > 0 && item.ratingSum ? (item.ratingSum / item.totalVotes).toFixed(1) : 0;
 
@@ -32,10 +38,7 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
   const selectedOption = userVotes[item.id]; 
   const defaultAvatar = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
-  // NAYA: Post Type Check
-  const isYesNo = item.type === 'YES_NO';
-
-return (
+  return (
     <View style={styles.postCard}>
       <View style={styles.userInfo}>
         <TouchableOpacity style={styles.userInfo} onPress={() => navigation.navigate('PublicProfile', { userId: item.creatorId })} activeOpacity={0.7}>
@@ -49,8 +52,68 @@ return (
       <Text style={styles.question}>{item.question}</Text>
       
       {/* DYNAMIC POST DESIGN */}
-      {isYesNo ? (
-        // 1. YES / NO DESIGN
+      {isPoll ? (
+        <View style={styles.pollWrapper}>
+          {['A', 'B', 'C', 'D'].map((opt) => {
+            if (!item.pollOptions || !item.pollOptions[opt]) return null;
+            
+            const optCount = item[`voteCount${opt}`] || 0;
+            const optPercent = total > 0 ? Math.round((optCount / total) * 100) : 0;
+            const isSelected = selectedOption === opt;
+
+            return (
+              <TouchableOpacity 
+                key={opt} 
+                style={[styles.pollOptionBtn, hasVoted && isSelected && styles.pollSelectedBtn]}
+                onPress={() => !hasVoted && onVote(item.id, opt, item.creatorId)}
+                activeOpacity={hasVoted ? 1 : 0.7}
+              >
+                {hasVoted && (
+                  <View style={[styles.pollProgressBar, { width: `${optPercent}%` }]} />
+                )}
+                
+                <View style={styles.pollTextContent}>
+                  <Text style={[styles.pollOptText, hasVoted && isSelected && {fontWeight: 'bold', color: COLORS.primary || '#5A9624'}]}>
+                    {item.pollOptions[opt]}
+                  </Text>
+                  {hasVoted && <Text style={styles.pollPercentVal}>{optPercent}%</Text>}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ) : isGuess ? (
+        // YEH WALA HISSA MISSING THA (GUESS DESIGN)
+        <View style={styles.singleImageContainer}>
+          <Image source={{ uri: item.imageA_URL }} style={styles.singleImage} />
+          
+          {hasVoted ? (
+            <View style={styles.guessResultBox}>
+              <Text style={styles.guessUserText}>Your Guess: <Text style={{fontWeight: 'bold'}}>{selectedOption}</Text></Text>
+              <Text style={styles.guessCorrectText}>Actual Answer: <Text style={{fontWeight: 'bold', color: COLORS.primary || '#5A9624'}}>{item.correctAnswer}</Text></Text>
+            </View>
+          ) : (
+            <View style={styles.guessInputRow}>
+              <TextInput
+                style={styles.guessInputField}
+                placeholder="Type your guess here..."
+                placeholderTextColor="#999"
+                value={guessInput}
+                onChangeText={setGuessInput}
+              />
+              <TouchableOpacity 
+                style={styles.guessSubmitBtn} 
+                onPress={() => {
+                  if(!guessInput) return;
+                  onVote(item.id, guessInput.trim().toLowerCase(), item.creatorId);
+                }}
+              >
+                <Text style={styles.guessSubmitText}>Submit</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      ) : isYesNo ? (
         <View style={styles.singleImageContainer}>
           <Image source={{ uri: item.imageA_URL }} style={styles.singleImage} />
           <View style={styles.yesNoRow}>
@@ -63,7 +126,6 @@ return (
           </View>
         </View>
       ) : isRate ? (
-        // 2. RATE DESIGN (1 Image, 5 Stars)
         <View style={styles.singleImageContainer}>
           <Image source={{ uri: item.imageA_URL }} style={styles.singleImage} />
           <View style={styles.starsRow}>
@@ -76,7 +138,6 @@ return (
           {hasVoted && <Text style={styles.avgText}>Average Rating: {avgRating} ⭐</Text>}
         </View>
       ) : (
-        // 3. A vs B DESIGN (2 Images)
         <View style={styles.imagesRow}>
           <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'A' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'A', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
             <Image source={{ uri: item.imageA_URL }} style={styles.postImage} />
@@ -105,6 +166,7 @@ export default function HomeScreen({ navigation }) {
   const [userVotes, setUserVotes] = useState({}); 
   const HOME_CATEGORIES = ['All', 'Fashion', 'Food', 'Travel', 'Fun', 'Sports', 'Tech'];
   const [activeCategory, setActiveCategory] = useState('All');
+  const [activeFeed, setActiveFeed] = useState('For You');
 
   useEffect(() => {
     const db = getFirestore();
@@ -150,11 +212,15 @@ export default function HomeScreen({ navigation }) {
       }
 
       await setDoc(voteRef, { selectedOption: option, userId: currentUser.uid, votedAt: new Date() });
+      
       let updateData = {};
-      if (typeof option === 'number') {
+      if (typeof option === 'number') { // Rate
         updateData = { ratingSum: increment(option), totalVotes: increment(1) };
+      } else if (['A', 'B', 'C', 'D'].includes(option)) { // A vs B, Yes/No, Poll
+        updateData = { [`voteCount${option}`]: increment(1), totalVotes: increment(1) };
       } else {
-        updateData = { [option === 'A' ? 'voteCountA' : 'voteCountB']: increment(1), totalVotes: increment(1) };
+        // NAYA: GUESS ke liye (Sirf total votes barhao)
+        updateData = { totalVotes: increment(1) };
       }
       
       await updateDoc(challengeRef, updateData);
@@ -204,10 +270,36 @@ export default function HomeScreen({ navigation }) {
           contentContainerStyle={{ paddingBottom: 20 }}
           ListHeaderComponent={
             <View style={{ padding: 15 }}>
+              
+              {/* NAYA: For You / Following Tabs Clickable ho gaye */}
               <View style={{ flexDirection: 'row', gap: 20, marginBottom: 15 }}>
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: COLORS.primary || '#5A9624', borderBottomWidth: 2, borderBottomColor: COLORS.primary || '#5A9624', paddingBottom: 5 }}>For You</Text>
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#888' }}>Following</Text>
+                <TouchableOpacity onPress={() => setActiveFeed('For You')}>
+                  <Text style={{ 
+                    fontSize: 16, 
+                    fontWeight: 'bold', 
+                    color: activeFeed === 'For You' ? (COLORS.primary || '#5A9624') : '#888', 
+                    borderBottomWidth: activeFeed === 'For You' ? 2 : 0, 
+                    borderBottomColor: COLORS.primary || '#5A9624', 
+                    paddingBottom: 5 
+                  }}>
+                    For You
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setActiveFeed('Following')}>
+                  <Text style={{ 
+                    fontSize: 16, 
+                    fontWeight: 'bold', 
+                    color: activeFeed === 'Following' ? (COLORS.primary || '#5A9624') : '#888', 
+                    borderBottomWidth: activeFeed === 'Following' ? 2 : 0, 
+                    borderBottomColor: COLORS.primary || '#5A9624', 
+                    paddingBottom: 5 
+                  }}>
+                    Following
+                  </Text>
+                </TouchableOpacity>
               </View>
+
               <FlatList 
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -259,7 +351,7 @@ const styles = StyleSheet.create({
   yourChoiceText: { color: '#fff', backgroundColor: COLORS.primary || '#5A9624', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, fontSize: 12, fontWeight: 'bold', marginTop: 10 },
   selectedBorder: { borderWidth: 3, borderColor: COLORS.primary || '#5A9624' },
   
-  // NAYA: Yes / No Styles
+  // Yes / No Styles
   singleImageContainer: { width: '100%' },
   singleImage: { width: '100%', height: 250, borderRadius: 12, backgroundColor: '#e0e0e0', marginBottom: 15 },
   yesNoRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
@@ -274,10 +366,29 @@ const styles = StyleSheet.create({
   homeActiveCatBadge: { backgroundColor: COLORS.primary || '#5A9624' },
   homeCatText: { color: '#666', fontWeight: 'bold' },
   homeActiveCatText: { color: '#fff' },
+  
   // RATE Styles
   starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 15, marginVertical: 10 },
   starIcon: { fontSize: 45 },
-  starSelected: { color: '#FFD700' }, // Golden color
-  starUnselected: { color: '#e0e0e0' }, // Grey color
+  starSelected: { color: '#FFD700' }, 
+  starUnselected: { color: '#e0e0e0' }, 
   avgText: { textAlign: 'center', fontSize: 16, fontWeight: 'bold', color: COLORS.primary || '#5A9624', marginTop: 5 },
+
+  // NAYA: POLL Styles
+  pollWrapper: { marginTop: 5, gap: 10 },
+  pollOptionBtn: { width: '100%', height: 45, backgroundColor: '#f5f5f5', borderRadius: 8, justifyContent: 'center', overflow: 'hidden', borderWidth: 1, borderColor: '#eee' },
+  pollSelectedBtn: { borderColor: COLORS.primary || '#5A9624', borderWidth: 1.5 },
+  pollProgressBar: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: '#e8f5e9' },
+  pollTextContent: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 15, position: 'absolute', width: '100%', alignItems: 'center' },
+  pollOptText: { fontSize: 15, color: '#333' },
+  pollPercentVal: { fontSize: 14, fontWeight: 'bold', color: '#555' },
+
+  // NAYA: GUESS Styles
+  guessInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 5 },
+  guessInputField: { flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 25, paddingHorizontal: 15, height: 45, backgroundColor: '#f9f9f9', color: '#000' },
+  guessSubmitBtn: { backgroundColor: COLORS.primary || '#5A9624', paddingHorizontal: 20, height: 45, borderRadius: 25, justifyContent: 'center' },
+  guessSubmitText: { color: '#fff', fontWeight: 'bold' },
+  guessResultBox: { backgroundColor: '#f0f0f0', padding: 15, borderRadius: 10, marginTop: 5, borderWidth: 1, borderColor: '#ddd' },
+  guessUserText: { fontSize: 15, color: '#555', marginBottom: 5 },
+  guessCorrectText: { fontSize: 16, color: '#000' },
 });
