@@ -9,6 +9,7 @@ import { SignupScreen} from './src/screens/auth/SignupScreen.jsx'
 import { LoginScreen} from './src/screens/auth/LoginScreen.jsx'
 import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
 import TabNavigator from './src/navigation/TabNavigator';
+import PublicProfileScreen from './src/screens/PublicProfileScreen';
 
 
 const Stack = createNativeStackNavigator()
@@ -68,6 +69,8 @@ if (initializing) return null;
             <Stack.Screen name="Welcome" component={WelcomeScreen} />
             <Stack.Screen name="SignupScreen" component={SignupScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="PublicProfile" component={PublicProfileScreen} options={{ headerShown: false }} 
+           />
           </>
         )}
 

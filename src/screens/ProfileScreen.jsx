@@ -59,7 +59,7 @@ export default function ProfileScreen({ navigation }) {
       unsubscribeUser();
       unsubscribePosts();
     };
-  }, [currentUser]);
+  }, [currentUser,db]);
 
   const handleLogout = () => {
     signOut(auth).then(() => console.log('User signed out!'));

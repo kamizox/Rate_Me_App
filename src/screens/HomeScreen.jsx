@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { NavigationContainer } from '@react-navigation/native'
 import { getAuth, signOut } from '@react-native-firebase/auth';
 // NAYA: serverTimestamp import kiya hai
 import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, increment, serverTimestamp } from '@react-native-firebase/firestore';
 import { COLORS } from '../constant/colors';
 
-const PostCard = ({ item, userVotes, onVote }) => {
+const PostCard = ({ item, userVotes, onVote,navigation }) => {
   const [creator, setCreator] = useState(null);
 
   useEffect(() => {
@@ -14,7 +15,7 @@ const PostCard = ({ item, userVotes, onVote }) => {
       if (item.creatorId && item.creatorId !== 'anonymous') {
         const db = getFirestore();
         const userDoc = await getDoc(doc(db, 'users', item.creatorId));
-        if (userDoc.exists) setCreator(userDoc.data());
+        if (userDoc.exists()) setCreator(userDoc.data());
       }
     };
     fetchCreatorDetails();
@@ -32,6 +33,12 @@ const PostCard = ({ item, userVotes, onVote }) => {
   return (
     <View style={styles.postCard}>
       <View style={styles.userInfo}>
+        <TouchableOpacity 
+        style={styles.userInfo}
+        onPress={() => navigation.navigate('PublicProfile', { userId: item.creatorId })}
+        activeOpacity={0.7}
+      >
+      </TouchableOpacity>
         <Image source={{ uri: creator?.profilePic || defaultAvatar }} style={styles.avatar} />
         <View>
           <Text style={styles.userName}>{creator ? creator.name : 'Loading...'}</Text>
@@ -72,7 +79,7 @@ const PostCard = ({ item, userVotes, onVote }) => {
   );
 };
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }) {
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userVotes, setUserVotes] = useState({}); 
@@ -104,7 +111,7 @@ export default function HomeScreen() {
 
     try {
       const voteDoc = await getDoc(voteRef);
-      if (voteDoc.exists) {
+      if (voteDoc.exists()) {
         Alert.alert("Already Voted!", "Aap is challenge par pehle hi vote kar chuke hain.");
         setUserVotes(prev => ({ ...prev, [challengeId]: voteDoc.data().selectedOption }));
         return;
@@ -142,14 +149,29 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Rate<Text style={{color: COLORS.primary}}>Me</Text></Text>
-        <TouchableOpacity onPress={handleLogout}><Text style={styles.logoutText}>Log out</Text></TouchableOpacity>
+        <TouchableOpacity onPress={handleLogout}>
+          <Text style={styles.logoutText}>Log out</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
-        <View style={styles.loaderContainer}><ActivityIndicator size="large" color={COLORS.primary} /></View>
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
       ) : (
-        <FlatList data={challenges} keyExtractor={(item) => item.id} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}
-          renderItem={({ item }) => <PostCard item={item} userVotes={userVotes} onVote={handleVote} />}
+        <FlatList 
+          data={challenges} 
+          keyExtractor={(item) => item.id} 
+          showsVerticalScrollIndicator={false} 
+          contentContainerStyle={{ paddingBottom: 20 }}
+          renderItem={({ item }) => (
+            <PostCard 
+              item={item} 
+              userVotes={userVotes} 
+              onVote={handleVote} 
+              navigation={navigation} // <--- Sirf ek dafa yahan aayega
+            />
+          )}
           ListEmptyComponent={<Text style={styles.emptyText}>No challenges found. Create one!</Text>}
         />
       )}

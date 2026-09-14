@@ -102,8 +102,12 @@ export default function DiscoverScreen({ navigation }) {
 
   const renderUserCard = ({ item }) => {
     const isFollowing = followingMap[item.id];
-    return (
-      <View style={styles.userCard}>
+return (
+      <TouchableOpacity 
+        style={styles.userCard}
+        onPress={() => navigation.navigate('PublicProfile', { userId: item.id })}
+        activeOpacity={0.8}
+      >
         <Image source={{ uri: item.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }} style={styles.avatar} />
         <View style={styles.userInfo}>
           <Text style={styles.userName}>{item.name}</Text>
@@ -112,7 +116,7 @@ export default function DiscoverScreen({ navigation }) {
         <TouchableOpacity style={[styles.followButton, isFollowing && styles.followingButton]} onPress={() => handleFollowToggle(item.id)}>
           <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>{isFollowing ? 'Following' : 'Follow'}</Text>
         </TouchableOpacity>
-      </View>
+      </TouchableOpacity> // <-- Yahan View ki jagah TouchableOpacity close hoga
     );
   };
 
@@ -153,7 +157,7 @@ export default function DiscoverScreen({ navigation }) {
               <Text style={styles.sectionTitle}>Top Creators 🌟</Text>
               <FlatList horizontal showsHorizontalScrollIndicator={false} data={topCreators} keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.topCreatorCard}>
+                  <TouchableOpacity style={styles.topCreatorCard} onPress={() => navigation.navigate('PublicProfile', { userId: item.id })}>
                     <Image source={{ uri: item.profilePic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png' }} style={styles.topCreatorAvatar} />
                     <Text style={styles.topCreatorName} numberOfLines={1}>{item.name}</Text>
                     <Text style={styles.topCreatorHandle}>@{item.username}</Text>
