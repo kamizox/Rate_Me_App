@@ -1,6 +1,6 @@
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { View, Text, Image } from 'react-native'
+import { View, Text, Image,ActivityIndicator } from 'react-native'
 import React, {useState,useEffect}from 'react'
 import {CustomButton} from './src/components/CustomButton.jsx'
 import {COLORS} from './src/constant/colors.js'
@@ -52,14 +52,21 @@ function WelcomeScreen({navigation}) {
 const App = () => {
   const [initializing, setInitializing] = useState(true);
   const [user, setUser] = useState(null);
-  useEffect(() => {
-    const subscriber = onAuthStateChanged(getAuth(), (currentUser) => {
-      setUser(currentUser);
-      if (initializing) setInitializing(false);
-    });
-    return subscriber;
+   useEffect(() => {
+  const subscriber = onAuthStateChanged(getAuth(), (currentUser) => {
+    console.log('Auth state changed:', currentUser ? currentUser.uid : 'no user');
+    setUser(currentUser);
+    if (initializing) setInitializing(false);
+  });
+  return subscriber;
   }, [initializing]);
-if (initializing) return null; 
+if (initializing) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+      <ActivityIndicator size="large" color={COLORS.primary} />
+    </View>
+  );
+}
 
   return (
     <NavigationContainer>
