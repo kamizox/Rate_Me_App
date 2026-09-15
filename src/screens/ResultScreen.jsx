@@ -48,11 +48,33 @@ export default function ResultScreen({ route, navigation }) {
 
           <Text style={styles.statsLabel}>Current Standings:</Text>
           
-          {/* A vs B ya Yes/No ka result */}
-          {(challenge.type === 'A_vs_B' || challenge.type === 'YES_NO') && (
+         {/* A vs B Ka Result (Sirf Option A aur Option B) */}
+          {challenge.type === 'A_vs_B' && (
             <View>
               <View style={styles.statRow}>
-                <Text style={styles.statOpt}>Option A (Yes)</Text>
+                <Text style={styles.statOpt}>Option A</Text>
+                <Text style={styles.statPerc}>{percentA}%</Text>
+              </View>
+              <View style={styles.progressBarBg}>
+                {/* Dono bars green/primary color ki hongi */}
+                <View style={[styles.progressBarFill, { width: `${percentA}%` }]} />
+              </View>
+
+              <View style={[styles.statRow, { marginTop: 15 }]}>
+                <Text style={styles.statOpt}>Option B</Text>
+                <Text style={styles.statPerc}>{percentB}%</Text>
+              </View>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${percentB}%` }]} />
+              </View>
+            </View>
+          )}
+
+          {/* YES / NO Ka Result (Thumbs up/down ke sath Red/Green) */}
+          {challenge.type === 'YES_NO' && (
+            <View>
+              <View style={styles.statRow}>
+                <Text style={styles.statOpt}>👍 Yes</Text>
                 <Text style={styles.statPerc}>{percentA}%</Text>
               </View>
               <View style={styles.progressBarBg}>
@@ -60,10 +82,11 @@ export default function ResultScreen({ route, navigation }) {
               </View>
 
               <View style={[styles.statRow, { marginTop: 15 }]}>
-                <Text style={styles.statOpt}>Option B (No)</Text>
+                <Text style={styles.statOpt}>👎 No</Text>
                 <Text style={styles.statPerc}>{percentB}%</Text>
               </View>
               <View style={styles.progressBarBg}>
+                {/* No wale ko Red color diya gaya hai */}
                 <View style={[styles.progressBarFill, { width: `${percentB}%`, backgroundColor: '#FF3B30' }]} />
               </View>
             </View>

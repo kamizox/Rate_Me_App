@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator, Dimensions, Modal, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getAuth, signOut } from '@react-native-firebase/auth';
-// NAYA: onSnapshot import kiya live updates ke liye
-import { getFirestore, doc, collection, query, where, updateDoc, onSnapshot ,getDocs, getDoc} from '@react-native-firebase/firestore';
+import { getFirestore, doc, collection, query, where, updateDoc, onSnapshot, getDocs, getDoc } from '@react-native-firebase/firestore';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { uploadImageToCloudinary } from '../services/cloudinaryService';
 import { COLORS } from '../constant/colors';
@@ -28,7 +27,7 @@ export default function ProfileScreen({ navigation }) {
   const db = getFirestore();
   const currentUser = auth.currentUser;
 
-  // NAYA: Live Listener Logic (onSnapshot)
+  // Live Listener Logic (onSnapshot)
   useEffect(() => {
     if (!currentUser) return;
 
@@ -41,7 +40,7 @@ export default function ProfileScreen({ navigation }) {
 
     // 2. User ki apni Posts ki live detail
     const q = query(collection(db, 'challenges'), where('creatorId', '==', currentUser.uid));
-    const unsubscribePosts = onSnapshot(q,async (querySnapshot) => {
+    const unsubscribePosts = onSnapshot(q, async (querySnapshot) => {
       const posts = [];
       querySnapshot.forEach((doc) => {
         posts.push({ id: doc.id, ...doc.data() });
@@ -50,18 +49,19 @@ export default function ProfileScreen({ navigation }) {
       posts.sort((a, b) => b.createdAt - a.createdAt);
       setUserPosts(posts);
       setLoading(false); // Data aate hi loading band
-      // Saved challenges fetch karna
-const savedSnap = await getDocs(collection(db, `users/${currentUser.uid}/savedChallenges`));
-const savedIds = savedSnap.docs.map(doc => doc.id);
 
-const savedChallenges = [];
-for (const id of savedIds) {
-  const challengeDoc = await getDoc(doc(db, 'challenges', id));
-  if (challengeDoc.exists()) {
-    savedChallenges.push({ id: challengeDoc.id, ...challengeDoc.data() });
-  }
-}
-setSavedPosts(savedChallenges);
+      // Saved challenges fetch karna
+      const savedSnap = await getDocs(collection(db, `users/${currentUser.uid}/savedChallenges`));
+      const savedIds = savedSnap.docs.map(doc => doc.id);
+
+      const savedChallenges = [];
+      for (const id of savedIds) {
+        const challengeDoc = await getDoc(doc(db, 'challenges', id));
+        if (challengeDoc.exists()) {
+          savedChallenges.push({ id: challengeDoc.id, ...challengeDoc.data() });
+        }
+      }
+      setSavedPosts(savedChallenges);
     }, (error) => {
       console.log("Error fetching profile posts:", error);
       setLoading(false);
@@ -72,7 +72,7 @@ setSavedPosts(savedChallenges);
       unsubscribeUser();
       unsubscribePosts();
     };
-  }, [currentUser,db]);
+  }, [currentUser, db]);
 
   const handleLogout = () => {
     signOut(auth).then(() => console.log('User signed out!'));
@@ -115,11 +115,20 @@ setSavedPosts(savedChallenges);
     }
   };
 
-  const renderStat = (value, label) => (
-    <View style={styles.statBox}>
+  // NAYA: Yahan humne renderStat ko Clickable bana diya hai
+  const renderStat = (value, label, type) => (
+    <TouchableOpacity 
+      style={styles.statBox} 
+      onPress={() => {
+        if (type === 'followers' || type === 'following') {
+          navigation.navigate('FollowList', { userId: currentUser.uid, type: type });
+        }
+      }}
+      disabled={type === 'rating'} // Rating par click nahi hoga
+    >
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 
   const renderGridPost = ({ item }) => (
@@ -168,15 +177,15 @@ setSavedPosts(savedChallenges);
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate('Leaderboard')} style={styles.editButton}>
-  <Text style={styles.editButtonText}>🏆 Leaderboard</Text>
-</TouchableOpacity>
+                <Text style={styles.editButtonText}>🏆 Leaderboard</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.statsContainer}>
-              {/* NAYA: Yahan '0' ko hata kar asal data pass kar diya */}
-              {renderStat(userData?.followersCount || 0, 'Followers')}
-              {renderStat(userData?.followingCount || 0, 'Following')}
-              {renderStat(userData?.avgRating || 0, 'Avg Rating')}
+              {/* NAYA: Yahan functions mein type pass kar di */}
+              {renderStat(userData?.followersCount || 0, 'Followers', 'followers')}
+              {renderStat(userData?.followingCount || 0, 'Following', 'following')}
+              {renderStat(userData?.avgRating || 0, 'Avg Rating', 'rating')}
             </View>
 
             <View style={styles.tabsContainer}>
@@ -237,7 +246,6 @@ setSavedPosts(savedChallenges);
   );
 }
 
-// ... Styles bilkul pehle wale hi rahenge (main unhein yahan include kar raha hoon taake error na aaye)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
