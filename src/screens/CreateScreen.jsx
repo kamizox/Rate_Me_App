@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, TextInput, Image, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { uploadImageToCloudinary } from '../services/cloudinaryService'; 
@@ -25,11 +25,11 @@ export default function CreateScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState('Fashion'); 
   const CATEGORIES = ['Fashion', 'Food', 'Travel', 'Fun', 'Sports', 'Tech'];
   
-  // Image States (For A vs B, Yes/No, Rate)
+  // Image States
   const [imageA, setImageA] = useState(null);
   const [imageB, setImageB] = useState(null);
   
-  // NAYA: Poll States (4 Options)
+  // Poll States
   const [pollOptA, setPollOptA] = useState('');
   const [pollOptB, setPollOptB] = useState('');
   const [pollOptC, setPollOptC] = useState('');
@@ -65,7 +65,7 @@ export default function CreateScreen({ navigation }) {
         Alert.alert('Incomplete', 'A question and at least 2 options are required.');
         return;
       }
-    } else if (isGuess) { // NAYA: Guess Validation
+    } else if (isGuess) { 
       if (!question || !imageA || !guessAnswer) {
         Alert.alert('Incomplete', 'A question, one image, and the correct answer are required.');
         return;
@@ -96,7 +96,7 @@ export default function CreateScreen({ navigation }) {
         imageA_URL: urlA,
         imageB_URL: urlB,
         pollOptions: isPoll ? { A: pollOptA, B: pollOptB, C: pollOptC || null, D: pollOptD || null } : null,
-        correctAnswer: isGuess ? guessAnswer.trim().toLowerCase() : null, // NAYA: Asal jawab save hoga
+        correctAnswer: isGuess ? guessAnswer.trim().toLowerCase() : null,
         creatorId: currentUser ? currentUser.uid : 'anonymous',
         createdAt: serverTimestamp(),
         voteCountA: 0, voteCountB: 0, voteCountC: 0, voteCountD: 0, totalVotes: 0,
@@ -106,7 +106,7 @@ export default function CreateScreen({ navigation }) {
       
       setQuestion(''); setImageA(null); setImageB(null);
       setPollOptA(''); setPollOptB(''); setPollOptC(''); setPollOptD('');
-      setGuessAnswer(''); // NAYA
+      setGuessAnswer(''); 
       setStep(1);
       navigation.navigate('Home');
 
@@ -145,7 +145,6 @@ export default function CreateScreen({ navigation }) {
     );
   }
 
-  // --- STEP 2 UI ---
   const isAvsB = selectedType?.type === 'A_vs_B';
   const isPoll = selectedType?.type === 'POLL';
   const isGuess = selectedType?.type === 'GUESS';
@@ -158,7 +157,8 @@ export default function CreateScreen({ navigation }) {
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.formContainer}>
+      {/* NAYA: Yahan View ki jagah ScrollView lagaya hai taake keyboard khulne par masla na ho */}
+      <ScrollView contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>
         <Text style={styles.label}>What's your question?</Text>
         <TextInput style={styles.input} placeholder="e.g., Which outfit looks better?" placeholderTextColor="#666666" value={question} onChangeText={setQuestion}/>
         
@@ -171,7 +171,6 @@ export default function CreateScreen({ navigation }) {
           ))}
         </View>
 
-        {/* NAYA: Agar Poll hai tou Text Options dikhao, warna Photos */}
         {isPoll ? (
           <View>
              <Text style={styles.label}>Options (Minimum 2)</Text>
@@ -186,9 +185,10 @@ export default function CreateScreen({ navigation }) {
              <TextInput style={styles.pollInput} placeholder="e.g., A Cat, John Doe, etc." placeholderTextColor="#999" value={guessAnswer} onChangeText={setGuessAnswer} />
              
              <Text style={styles.label}>Add Photo to Guess</Text>
-             <TouchableOpacity style={[styles.imageBox, { width: '100%' }]} onPress={() => pickImage('A')}>
+             {/* NAYA: Yahan 'flex: 0' add kiya hai taake box pichak na jaye */}
+             <TouchableOpacity style={[styles.imageBox, { width: '100%', flex: 0 }]} onPress={() => pickImage('A')}>
                 {imageA ? <Image source={{ uri: imageA }} style={styles.previewImage} /> : <Text style={styles.addPhotoText}>+ Photo</Text>}
-              </TouchableOpacity>
+             </TouchableOpacity>
           </View>
         ) : (
           <View>
@@ -210,7 +210,7 @@ export default function CreateScreen({ navigation }) {
         <TouchableOpacity style={[styles.publishButton, isPublishing && { backgroundColor: '#a5d6a7' }]} onPress={handlePublish} disabled={isPublishing}>
           {isPublishing ? <ActivityIndicator color="#fff" /> : <Text style={styles.publishButtonText}>Publish</Text>}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -230,10 +230,7 @@ const styles = StyleSheet.create({
   formContainer: { padding: 20 },
   label: { fontSize: 16, fontWeight: 'bold', color: '#000', marginBottom: 10, marginTop: 10 },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 10, padding: 15, fontSize: 15, backgroundColor: '#f5f1f1', marginBottom: 20, color: '#000' },
-  
-  // NAYA: Poll Input style
   pollInput: { borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 8, padding: 12, fontSize: 15, backgroundColor: '#fff', marginBottom: 10, color: '#000' },
-  
   catBadge: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', borderWidth: 1, borderColor: '#ddd' },
   activeCatBadge: { backgroundColor: COLORS.primary || '#5A9624', borderColor: COLORS.primary || '#5A9624' },
   catText: { color: '#666', fontWeight: 'bold' },
@@ -242,6 +239,6 @@ const styles = StyleSheet.create({
   imageBox: { flex: 1, height: 180, backgroundColor: '#f0f0f0', borderRadius: 10, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#ddd', borderStyle: 'dashed' },
   previewImage: { width: '100%', height: '100%', borderRadius: 10 },
   addPhotoText: { color: '#888', fontWeight: 'bold' },
-  publishButton: { backgroundColor: COLORS.primary || '#5A9624', padding: 16, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+  publishButton: { backgroundColor: COLORS.primary || '#5A9624', padding: 16, borderRadius: 10, alignItems: 'center', marginTop: 10, marginBottom: 30 }, // NAYA: ScrollView ke neechay gap ke liye marginBottom
   publishButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });

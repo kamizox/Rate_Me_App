@@ -71,7 +71,7 @@ export default function FollowListScreen({ route, navigation }) {
             </TouchableOpacity>
           )}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>Koi {type} nahi mila.</Text>
+            <Text style={styles.emptyText}>No {type} found.</Text>
           }
         />
       )}

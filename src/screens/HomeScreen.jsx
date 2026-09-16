@@ -106,7 +106,7 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
         console.log("Shared successfully!");
       }
     } catch (error) {
-      Alert.alert("Error", "Share karne mein masla aagaya.");
+      Alert.alert("Error", "Something went wrong while sharing.");
       console.log(error.message);
     }
   };
