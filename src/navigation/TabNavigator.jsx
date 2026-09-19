@@ -28,7 +28,7 @@ export default function TabNavigator() {
         
 tabBarIcon: ({ color, size }) => {
   let iconSource;
-  let applyTint = true; // NAYA
+  let applyTint = true; 
 
   if (route.name === 'Home') {
     iconSource = require('../assets/icons/home.png');
@@ -36,7 +36,7 @@ tabBarIcon: ({ color, size }) => {
     iconSource = require('../assets/icons/search-interface-symbol.png'); 
   } else if (route.name === 'Create') {
     iconSource = require('../assets/icons/add-button.png');
-    applyTint = false; // Create icon apna original color rakhega
+    applyTint = false; 
   } else if (route.name === 'Inbox') {
     iconSource = require('../assets/icons/bell.png');
   } else if (route.name === 'Profile') {
@@ -49,7 +49,7 @@ tabBarIcon: ({ color, size }) => {
       style={{
         width: 26,
         height: 26,
-        tintColor: applyTint ? color : undefined, // NAYA
+        tintColor: applyTint ? color : undefined, 
       }}
     />
   );

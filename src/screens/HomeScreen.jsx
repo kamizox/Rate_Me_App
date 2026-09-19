@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, FlatList, ActivityIndicator, Alert, TextInput, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { getAuth, signOut } from '@react-native-firebase/auth';
+import { getAuth } from '@react-native-firebase/auth';
 import { getFirestore, collection, query, orderBy, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, increment, serverTimestamp, where, deleteDoc } from '@react-native-firebase/firestore';
 import { COLORS } from '../constant/colors';
 
@@ -18,13 +18,14 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
   const isRate = item.type === 'RATE';
   const isPoll = item.type === 'POLL';
   const isGuess = item.type === 'GUESS'; 
+  const isAvsB = item.type === 'A_vs_B';
 
   const avgRating = item.totalVotes > 0 && item.ratingSum ? (item.ratingSum / item.totalVotes).toFixed(1) : 0;
 
   useEffect(() => {
     const db = getFirestore();
     
-    // Creator ki details mangwana
+    // Fetch creator details
     const fetchCreatorDetails = async () => {
       if (item.creatorId && item.creatorId !== 'anonymous') {
         const userDoc = await getDoc(doc(db, 'users', item.creatorId));
@@ -32,7 +33,7 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
       }
     };
     
-    // Check karna ke current user ne yeh post save ki hui hai ya nahi
+    // Check if the current user has saved this challenge
     const checkSavedStatus = async () => {
       if (!currentUser) return;
       const savedRef = doc(db, `users/${currentUser.uid}/savedChallenges`, item.id);
@@ -59,33 +60,6 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
             } catch (error) {
               console.log("Delete error:", error);
               Alert.alert("Error", "Could not delete the challenge.");
-            }
-        }}
-      ]
-    );
-  };
-
-  // Report Logic
-  const handleReport = () => {
-    Alert.alert(
-      "Report Post",
-     "Do you think this post violates the rules or is inappropriate?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Report", style: "destructive", onPress: async () => {
-            try {
-              const db = getFirestore();
-              await setDoc(doc(db, 'reports', `${currentUser.uid}_${item.id}`), {
-                challengeId: item.id,
-                reportedBy: currentUser.uid,
-                creatorId: item.creatorId,
-                createdAt: serverTimestamp(),
-                status: 'pending' 
-              });
-              Alert.alert("Reported", "Thank you! Our team will review this post.");
-            } catch (error) {
-              console.log("Report error:", error);
-              Alert.alert("Error", "Could not submit the report.");
             }
         }}
       ]
@@ -215,42 +189,68 @@ const PostCard = ({ item, userVotes, onVote, navigation }) => {
           {hasVoted && <Text style={styles.avgText}>Average Rating: {avgRating} ⭐</Text>}
         </View>
       ) : (
-        <View style={styles.imagesRow}>
-          <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'A' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'A', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
-            <Image source={{ uri: item.imageA_URL }} style={styles.postImage} />
-            {hasVoted ? <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentA}%</Text>{selectedOption === 'A' && <Text style={styles.yourChoiceText}>Your Choice</Text>}</View> : <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote A</Text></View>}
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'B' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'B', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
-            <Image source={{ uri: item.imageB_URL }} style={styles.postImage} />
-            {hasVoted ? <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentB}%</Text>{selectedOption === 'B' && <Text style={styles.yourChoiceText}>Your Choice</Text>}</View> : <View style={styles.voteButton}><Text style={styles.voteButtonText}>Vote B</Text></View>}
-          </TouchableOpacity>
+        // A vs B Design Update
+        <View>
+          <View style={styles.imagesRow}>
+            <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'A' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'A', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
+              <Image source={{ uri: item.imageA_URL }} style={styles.postImage} />
+              {!hasVoted && (
+                <View style={styles.badgeA}>
+                  <Text style={styles.badgeText}>A</Text>
+                </View>
+              )}
+              {hasVoted && <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentA}%</Text></View>}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.imageWrapper, hasVoted && selectedOption === 'B' && styles.selectedBorder]} onPress={() => !hasVoted && onVote(item.id, 'B', item.creatorId)} activeOpacity={hasVoted ? 1 : 0.7}>
+              <Image source={{ uri: item.imageB_URL }} style={styles.postImage} />
+              {!hasVoted && (
+                <View style={styles.badgeB}>
+                  <Text style={styles.badgeText}>B</Text>
+                </View>
+              )}
+              {hasVoted && <View style={styles.resultOverlay}><Text style={styles.percentText}>{percentB}%</Text></View>}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.avsbInfoRow}>
+            <Text style={styles.avsbTitle}>A vs B</Text>
+            <Text style={styles.avsbVotes}>{total} votes</Text>
+          </View>
+
+          {!hasVoted && (
+            <View style={styles.tapToVoteBtn}>
+              <Text style={styles.tapToVoteText}>Tap to vote</Text>
+            </View>
+          )}
         </View>
       )}
 
-      {/* Footer Actions */}
-      <View style={styles.postFooter}>
-        <Text style={styles.totalVotesText}>{total} votes</Text>
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
-            <Text style={styles.actionBtnText}>🔗 Share</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleSave}>
-            <Text style={[styles.actionBtnText, isSaved && {color: COLORS.primary || '#5A9624'}]}>
-              {isSaved ? '🔖 Saved' : '🔖 Save'}
-            </Text>
-          </TouchableOpacity>
-          {isOwner ? (
-            <TouchableOpacity style={styles.actionBtn} onPress={handleDelete}>
-              <Text style={[styles.actionBtnText, {color: '#FF3B30'}]}>🗑️ Delete</Text>
+      {/* Footer Actions (Only Share, Save, and Delete if Owner) */}
+      {(!isAvsB || hasVoted) && (
+        <View style={styles.postFooter}>
+          <Text style={styles.totalVotesText}>{total} votes</Text>
+          
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleShare}>
+              <Text style={styles.actionBtnText}>🔗 Share</Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.actionBtn} onPress={handleReport}>
-              <Text style={[styles.actionBtnText, {color: '#FF9800'}]}>🚩 Report</Text>
+            
+            <TouchableOpacity style={styles.actionBtn} onPress={handleSave}>
+              <Text style={[styles.actionBtnText, isSaved && {color: COLORS.primary || '#5A9624'}]}>
+                {isSaved ? '🔖 Saved' : '🔖 Save'}
+              </Text>
             </TouchableOpacity>
-          )}
-        </View>
-      </View>
 
+            {/* Show Delete only if user is the creator */}
+            {isOwner && (
+              <TouchableOpacity style={styles.actionBtn} onPress={handleDelete}>
+                <Text style={[styles.actionBtnText, {color: '#FF3B30'}]}>🗑️ Delete</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -323,10 +323,6 @@ export default function HomeScreen({ navigation }) {
     return () => unsubscribePosts();
   }, [activeCategory, activeFeed]); 
 
-  const handleLogout = () => {
-    signOut(getAuth()).then(() => console.log('User signed out!'));
-  };
-
   const handleVote = async (challengeId, option, creatorId) => {
     const currentUser = getAuth().currentUser;
     if (!currentUser) return;
@@ -335,7 +331,7 @@ export default function HomeScreen({ navigation }) {
     const voteRef = doc(db, 'challenges', challengeId, 'votes', currentUser.uid);
     const challengeRef = doc(db, 'challenges', challengeId);
 
-    // NAYA LOGIC: Yahan hum post ka data state (challenges array) se dhoond rahe hain
+    // Finding post data from the state
     const postItem = challenges.find(c => c.id === challengeId);
 
     try {
@@ -377,7 +373,7 @@ export default function HomeScreen({ navigation }) {
         });
       }
 
-      // NAYA LOGIC: Result Screen ke liye manually percentage nikalna
+      // Calculating percentages manually for the Result Screen
       let newTotal = (postItem?.totalVotes || 0) + 1;
       let newCountA = (postItem?.voteCountA || 0) + (option === 'A' ? 1 : 0);
       let newCountB = (postItem?.voteCountB || 0) + (option === 'B' ? 1 : 0);
@@ -400,10 +396,11 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header Updated */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Rate<Text style={{color: COLORS.primary}}>Me</Text></Text>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logoutText}>Log out</Text>
+        <Text style={styles.headerTitle}>Home</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Inbox')}>
+          <Text style={styles.bellIcon}>🔔</Text>
         </TouchableOpacity>
       </View>
 
@@ -461,6 +458,16 @@ export default function HomeScreen({ navigation }) {
                   </TouchableOpacity>
                 )}
               />
+
+              {/* Daily Challenge Banner */}
+              <TouchableOpacity style={styles.dailyChallengeContainer}>
+                 <Image
+                   source={require('../assets/DailyChallengeImg.png')} 
+                   style={styles.dailyChallengeImage}
+                   resizeMode="contain"
+                 />
+              </TouchableOpacity>
+
             </View>
           }
           renderItem={({ item }) => (
@@ -477,7 +484,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' }, 
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, backgroundColor: '#fff', elevation: 2 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#000' },
-  logoutText: { color: '#FF3B30', fontWeight: 'bold', fontSize: 14 },
+  bellIcon: { fontSize: 22 },
+  
+  // Daily Challenge Styles
+  dailyChallengeContainer: { marginTop: 20, width: '100%', alignItems: 'center' },
+  dailyChallengeImage: { width: '100%', height: 150, borderRadius: 15 },
+
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#888' },
   postCard: { backgroundColor: '#fff', marginTop: 15, padding: 15, borderRadius: 15, marginHorizontal: 10, elevation: 3 },
@@ -496,11 +508,19 @@ const styles = StyleSheet.create({
   imagesRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   imageWrapper: { flex: 1, position: 'relative', borderRadius: 12, overflow: 'hidden' }, 
   postImage: { width: '100%', height: 220, backgroundColor: '#e0e0e0' },
-  voteButton: { position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
-  voteButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  
+  // A vs B New Badges and Button Styles
+  badgeA: { position: 'absolute', bottom: 15, alignSelf: 'center', backgroundColor: '#F59E0B', width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }, 
+  badgeB: { position: 'absolute', bottom: 15, alignSelf: 'center', backgroundColor: '#84CC16', width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }, 
+  badgeText: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  avsbInfoRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingHorizontal: 5 },
+  avsbTitle: { fontSize: 16, fontWeight: 'bold', color: '#000' },
+  avsbVotes: { fontSize: 14, color: '#666', fontWeight: 'bold' },
+  tapToVoteBtn: { backgroundColor: '#84CC16', width: '100%', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 10 },
+  tapToVoteText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+
   resultOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' },
   percentText: { color: '#fff', fontSize: 32, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 1, height: 1}, textShadowRadius: 3 },
-  yourChoiceText: { color: '#fff', backgroundColor: COLORS.primary || '#5A9624', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, fontSize: 12, fontWeight: 'bold', marginTop: 10 },
   selectedBorder: { borderWidth: 3, borderColor: COLORS.primary || '#5A9624' },
   
   singleImageContainer: { width: '100%' },

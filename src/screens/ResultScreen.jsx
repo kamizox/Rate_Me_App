@@ -1,18 +1,16 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, Image, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../constant/colors';
-
-const { width } = Dimensions.get('window');
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Share, SafeAreaView } from 'react-native';
 
 export default function ResultScreen({ route, navigation }) {
-  // HomeScreen se vote karne ke baad yeh data yahan aayega
-  const { challenge, selectedOption, totalVotes, percentA, percentB, optCount } = route.params;
+  // Data coming from HomeScreen after voting
+  const { challenge, selectedOption, totalVotes, percentA, percentB } = route.params;
 
-  // Jab screen open ho tou choti si celebration animation ke liye aap yahan Lottie ya basic animation use kar sakte hain
-  useEffect(() => {
-    console.log("Result Screen Loaded!");
-  }, []);
+  // Calculate actual vote counts based on percentages
+  const countA = Math.round((percentA / 100) * totalVotes);
+  const countB = Math.round((percentB / 100) * totalVotes);
+
+  // Check if it's A vs B or Yes/No type challenge
+  const isAvsB = challenge.type === 'A_vs_B' || challenge.type === 'YES_NO';
 
   const handleShareResult = async () => {
     try {
@@ -24,142 +22,150 @@ export default function ResultScreen({ route, navigation }) {
     }
   };
 
+  // Determine colors based on the selected option to match the design
+  const colorA = '#84CC16'; // Green for A
+  const colorB = '#F59E0B'; // Orange for B
+  const selectedColor = selectedOption === 'A' ? colorA : colorB;
+  const selectedPercent = selectedOption === 'A' ? percentA : percentB;
+
   return (
     <SafeAreaView style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
           <Text style={styles.backIcon}>✕</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Results 📊</Text>
-        <View style={{ width: 30 }} />
+        <Text style={styles.headerTitle}>Results</Text>
+        <TouchableOpacity onPress={handleShareResult} style={styles.iconButton}>
+          <Text style={styles.shareIcon}>🔗</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.congratsText}>Vote Cast Successfully! 🎉</Text>
-        <Text style={styles.question}>{challenge.question}</Text>
+        
+        {/* TOP TITLE: You voted X 🎉 */}
+        <Text style={styles.youVotedText}>
+          You voted <Text style={{ color: selectedColor, fontWeight: '900' }}>{selectedOption}</Text> 🎉
+        </Text>
 
-        <View style={styles.resultCard}>
-          <Text style={styles.yourChoiceLabel}>Your Choice:</Text>
-          <Text style={styles.yourChoiceText}>
-            {challenge.type === 'POLL' ? challenge.pollOptions[selectedOption] : selectedOption}
-          </Text>
-
-          <View style={styles.divider} />
-
-          <Text style={styles.statsLabel}>Current Standings:</Text>
-          
-         {/* A vs B Ka Result (Sirf Option A aur Option B) */}
-          {challenge.type === 'A_vs_B' && (
-            <View>
-              <View style={styles.statRow}>
-                <Text style={styles.statOpt}>Option A</Text>
-                <Text style={styles.statPerc}>{percentA}%</Text>
+        {isAvsB ? (
+          <>
+            {/* CIRCULAR DONUT CHART SECTION */}
+            <View style={styles.donutWrapper}>
+              <View style={[styles.donutCircle, { borderColor: selectedColor }]}>
+                <Text style={styles.donutPercentText}>{selectedPercent}%</Text>
+                <View style={[styles.donutInnerBadge, { backgroundColor: selectedColor }]}>
+                  <Text style={styles.donutInnerBadgeText}>{selectedOption}</Text>
+                </View>
               </View>
-              <View style={styles.progressBarBg}>
-                {/* Dono bars green/primary color ki hongi */}
-                <View style={[styles.progressBarFill, { width: `${percentA}%` }]} />
-              </View>
-
-              <View style={[styles.statRow, { marginTop: 15 }]}>
-                <Text style={styles.statOpt}>Option B</Text>
-                <Text style={styles.statPerc}>{percentB}%</Text>
-              </View>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${percentB}%` }]} />
-              </View>
+              
+              <Text style={styles.totalVotesLarge}>{totalVotes}</Text>
+              <Text style={styles.totalVotesSub}>Total Votes</Text>
             </View>
-          )}
 
-          {/* YES / NO Ka Result (Thumbs up/down ke sath Red/Green) */}
-          {challenge.type === 'YES_NO' && (
-            <View>
-              <View style={styles.statRow}>
-                <Text style={styles.statOpt}>👍 Yes</Text>
-                <Text style={styles.statPerc}>{percentA}%</Text>
-              </View>
-              <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${percentA}%` }]} />
-              </View>
-
-              <View style={[styles.statRow, { marginTop: 15 }]}>
-                <Text style={styles.statOpt}>👎 No</Text>
-                <Text style={styles.statPerc}>{percentB}%</Text>
-              </View>
-              <View style={styles.progressBarBg}>
-                {/* No wale ko Red color diya gaya hai */}
-                <View style={[styles.progressBarFill, { width: `${percentB}%`, backgroundColor: '#FF3B30' }]} />
-              </View>
-            </View>
-          )}
-
-          {/* POLL Ka Result */}
-          {challenge.type === 'POLL' && (
-            <View>
-              {['A', 'B', 'C', 'D'].map(opt => {
-                if (!challenge.pollOptions[opt]) return null;
-                const pCount = challenge[`voteCount${opt}`] || 0;
-                // Agar user ne abhi vote kiya hai tou uski percentage update kar ke dikhani hogi (logic already handled in optCount if passed properly, but we calculate here)
-                const currentTotal = totalVotes; 
-                const perc = currentTotal > 0 ? Math.round((pCount / currentTotal) * 100) : 0;
-                
-                return (
-                  <View key={opt} style={{ marginBottom: 15 }}>
-                    <View style={styles.statRow}>
-                      <Text style={styles.statOpt}>{challenge.pollOptions[opt]}</Text>
-                      <Text style={styles.statPerc}>{perc}%</Text>
-                    </View>
-                    <View style={styles.progressBarBg}>
-                      <View style={[styles.progressBarFill, { width: `${perc}%` }]} />
-                    </View>
+            {/* BARS SECTION */}
+            <View style={styles.barsContainer}>
+              
+              {/* Option A Bar */}
+              <View style={styles.barRow}>
+                <View style={[styles.badgeBase, { backgroundColor: colorA }]}>
+                  <Text style={styles.badgeText}>A</Text>
+                </View>
+                <View style={styles.barMiddleInfo}>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${percentA}%`, backgroundColor: colorA }]} />
                   </View>
-                );
-              })}
-            </View>
-          )}
+                  <Text style={styles.voteCountText}>{countA} votes</Text>
+                </View>
+                <Text style={styles.percentSideText}>{percentA}%</Text>
+              </View>
 
-          <Text style={styles.totalVotes}>Total Votes: {totalVotes}</Text>
+              {/* Option B Bar */}
+              <View style={styles.barRow}>
+                <View style={[styles.badgeBase, { backgroundColor: colorB }]}>
+                  <Text style={styles.badgeText}>B</Text>
+                </View>
+                <View style={styles.barMiddleInfo}>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${percentB}%`, backgroundColor: colorB }]} />
+                  </View>
+                  <Text style={styles.voteCountText}>{countB} votes</Text>
+                </View>
+                <Text style={styles.percentSideText}>{percentB}%</Text>
+              </View>
+
+            </View>
+          </>
+        ) : (
+          // IF IT'S NOT A vs B (Poll or Guess), show simplified card
+          <View style={styles.otherChallengeCard}>
+            <Text style={styles.otherChallengeTitle}>{challenge.question}</Text>
+            <Text style={{ fontSize: 16, color: '#888', marginTop: 20 }}>Your Choice:</Text>
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#84CC16', marginTop: 5 }}>{selectedOption}</Text>
+            <Text style={{ marginTop: 30, color: '#666', fontWeight: 'bold' }}>Total Votes: {totalVotes}</Text>
+          </View>
+        )}
+
+        {/* BOTTOM BUTTONS ROW */}
+        <View style={styles.bottomButtonsRow}>
+          <TouchableOpacity style={styles.shareBtnOutline} onPress={handleShareResult}>
+            <Text style={styles.shareBtnOutlineText}>Share Result</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.nextBtnSolid} onPress={() => navigation.goBack()}>
+            <Text style={styles.nextBtnSolidText}>Next Challenge</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.shareButton} onPress={handleShareResult}>
-          <Text style={styles.shareButtonText}>🔗 Share Result</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.nextButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.nextButtonText}>Next Challenge ➡️</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, backgroundColor: '#fff', elevation: 2 },
-  backButton: { padding: 5 },
-  backIcon: { fontSize: 24, fontWeight: 'bold', color: '#000' },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#000' },
+  container: { flex: 1, backgroundColor: '#fff' }, // White background as per design
   
-  content: { flex: 1, padding: 20, alignItems: 'center' },
-  congratsText: { fontSize: 18, color: COLORS.primary || '#5A9624', fontWeight: 'bold', marginBottom: 10, marginTop: 10 },
-  question: { fontSize: 22, fontWeight: 'bold', color: '#333', textAlign: 'center', marginBottom: 30 },
+  // Header
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 15, paddingBottom: 10, backgroundColor: '#fff' },
+  iconButton: { padding: 5 },
+  backIcon: { fontSize: 22, fontWeight: 'bold', color: '#000' },
+  shareIcon: { fontSize: 22, color: '#000' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#000' },
   
-  resultCard: { width: '100%', backgroundColor: '#fff', borderRadius: 15, padding: 20, elevation: 3, marginBottom: 30 },
-  yourChoiceLabel: { fontSize: 14, color: '#888', textAlign: 'center' },
-  yourChoiceText: { fontSize: 24, fontWeight: 'bold', color: COLORS.primary || '#5A9624', textAlign: 'center', marginTop: 5 },
+  content: { flex: 1, paddingHorizontal: 20, paddingTop: 20, alignItems: 'center' },
   
-  divider: { height: 1, backgroundColor: '#eee', marginVertical: 20 },
+  youVotedText: { fontSize: 24, fontWeight: 'bold', color: '#000', marginBottom: 40 },
   
-  statsLabel: { fontSize: 16, fontWeight: 'bold', color: '#000', marginBottom: 15 },
-  statRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  statOpt: { fontSize: 15, color: '#333', fontWeight: '500' },
-  statPerc: { fontSize: 15, fontWeight: 'bold', color: '#000' },
-  progressBarBg: { width: '100%', height: 10, backgroundColor: '#f0f0f0', borderRadius: 5, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: COLORS.primary || '#5A9624', borderRadius: 5 },
+  // Circular Donut Area
+  donutWrapper: { alignItems: 'center', marginBottom: 40 },
+  donutCircle: { width: 160, height: 160, borderRadius: 80, borderWidth: 16, borderColor: '#e0e0e0', justifyContent: 'center', alignItems: 'center' },
+  donutPercentText: { fontSize: 36, fontWeight: 'bold', color: '#000' },
+  donutInnerBadge: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginTop: 5 },
+  donutInnerBadgeText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   
-  totalVotes: { textAlign: 'center', marginTop: 20, fontSize: 14, color: '#888', fontWeight: 'bold' },
+  totalVotesLarge: { fontSize: 22, fontWeight: 'bold', color: '#000', marginTop: 20 },
+  totalVotesSub: { fontSize: 14, color: '#666', fontWeight: '500' },
+  
+  // Bars Container
+  barsContainer: { width: '100%', marginBottom: 30 },
+  barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
+  badgeBase: { width: 34, height: 34, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  badgeText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  
+  barMiddleInfo: { flex: 1, marginRight: 15 },
+  progressBarBg: { width: '100%', height: 6, backgroundColor: '#f0f0f0', borderRadius: 3, marginBottom: 8 },
+  progressBarFill: { height: '100%', borderRadius: 3 },
+  voteCountText: { fontSize: 12, color: '#888', fontWeight: '600' },
+  
+  percentSideText: { fontSize: 18, fontWeight: 'bold', color: '#000', width: 45, textAlign: 'right' },
+  
+  // Other Challenges Card
+  otherChallengeCard: { width: '100%', backgroundColor: '#f9f9f9', padding: 30, borderRadius: 20, alignItems: 'center', marginBottom: 40, flex: 1, justifyContent: 'center', borderWidth: 1, borderColor: '#eee' },
+  otherChallengeTitle: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', color: '#333' },
 
-  shareButton: { width: '100%', backgroundColor: '#000', padding: 15, borderRadius: 10, alignItems: 'center', marginBottom: 15 },
-  shareButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  nextButton: { width: '100%', backgroundColor: '#fff', padding: 15, borderRadius: 10, alignItems: 'center', borderWidth: 1, borderColor: '#ddd' },
-  nextButtonText: { color: '#333', fontSize: 16, fontWeight: 'bold' },
+  // Bottom Buttons
+  bottomButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 'auto', marginBottom: 20 },
+  shareBtnOutline: { flex: 1, paddingVertical: 15, borderRadius: 12, borderWidth: 2, borderColor: '#eee', backgroundColor: '#fff', alignItems: 'center', marginRight: 10 },
+  shareBtnOutlineText: { fontSize: 15, fontWeight: 'bold', color: '#000' },
+  nextBtnSolid: { flex: 1, paddingVertical: 15, borderRadius: 12, backgroundColor: '#84CC16', alignItems: 'center', marginLeft: 10 },
+  nextBtnSolidText: { fontSize: 15, fontWeight: 'bold', color: '#fff' }
 });
